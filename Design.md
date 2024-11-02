@@ -13,7 +13,7 @@ GroundIdle -> InFlight -> Chute -> Land
     - check acceleration
 
 ## Unpowered flight
-- check barometer, if it starts decreasing we reached apogee
+- check barometer, if it starts decreasing, we reached apogee
 
 
 # Chute
