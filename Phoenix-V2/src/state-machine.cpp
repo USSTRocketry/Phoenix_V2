@@ -11,16 +11,14 @@ public:
         STATE_Landed
     };
 
-    StateMachine() : state(STATE_INIT) {}
+    StateMachine() : state(STATE_Idle) {}
 
     void state_run() {
         switch (state) {
             case STATE_Idle:
                 std::cout << "State: Idle" << std::endl;
                 Idle idle;
-                if (idle.loop()) {
-                    state = STATE_Ascent;
-                }
+                state = idle.loop();
                 break;
             case STATE_Ascent:
                 std::cout << "State: Ascent" << std::endl;

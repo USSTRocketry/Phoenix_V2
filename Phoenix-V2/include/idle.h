@@ -6,10 +6,11 @@ public:
     Idle();
     ~Idle();
 
-    bool loop() const;
+    bool loop();
 
 private:
-    bool running;
+    int i;
+    bool switch_condition() const;
 };
 
 #endif

@@ -1,28 +1,23 @@
 #include <iostream>
+#include "idle.h"
 
-class Idle {
-private:
-    int i;
 
-public:
-    Idle() : i(0) {}
+Idle::Idle() : i(0) {}
 
-    bool switch_condition() {
-        /* checks if it is time to switch states */
-        /* TODO */
+bool Idle::switch_condition() const {
+    /* checks if it is time to switch states */
+    /* TODO */
+    return true;
+}
+
+bool Idle::loop() {
+    if (switch_condition()) {
+        std::cout << "Switching states" << std::endl;
         return true;
+    } else {
+        /* Do stuff... */
+
+
+        return false;
     }
-
-    bool loop() {
-        if (switch_condition()) {
-            std::cout << "Switching states" << std::endl;
-            return true;
-        } else {
-            /* Do stuff... */
-
-
-            return false;
-        }
-    }
-};
-
+}
