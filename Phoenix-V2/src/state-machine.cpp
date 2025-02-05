@@ -1,4 +1,5 @@
 #include <iostream>
+#include "idle.h"
 
 class StateMachine {
 public:
@@ -16,7 +17,10 @@ public:
         switch (state) {
             case STATE_Idle:
                 std::cout << "State: Idle" << std::endl;
-                // Add logic for Idle state
+                Idle idle;
+                if (idle.loop()) {
+                    state = STATE_Ascent;
+                }
                 break;
             case STATE_Ascent:
                 std::cout << "State: Ascent" << std::endl;
