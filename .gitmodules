@@ -1,0 +1,3 @@
+[submodule "Phoenix-V2/lib/WDT_T4"]
+	path = Phoenix-V2/lib/WDT_T4
+	url = https://github.com/tonton81/WDT_T4.git
