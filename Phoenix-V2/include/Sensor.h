@@ -2,6 +2,28 @@
 
 struct SensorData
 {
+    template <typename T>
+    struct XYZ
+    {
+        T X;
+        T Y;
+        T Z;
+    };
+
+    XYZ<float> Magnetic;
+
+    struct BMP280
+    {
+        float Temperature;
+        float Pressure;
+        float Altitude;
+    } BMP280;
+    struct AccelGyroData
+    {
+        float Temperature;
+        XYZ<float> Accel;
+        XYZ<float> Gyro;
+    } AccelGyroData;
 };
 
 // sensor interface

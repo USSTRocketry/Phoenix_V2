@@ -2,10 +2,18 @@
 #include "Watchdog_t4.h"
 #include "StateMachine.h"
 #include "SensorAggregator.h"
+#include "Sensors/LSM6.h"
+#include "Sensors/BMP280.h"
+#include "Sensors/LIS3MDL.h"
 
 StateMachine SM;
 SensorAggregator SensorAccum;
 WDT_T4<WDT2> WatchDog;
+
+LIS3MDL Magnetometer {1, &Wire1};
+BMP280 Barometer {1, &Wire1};
+LSM6 AccelGyro {1, &Wire1};
+
 // put function declarations here:
 void WatchDogInterrupt()
 {
@@ -19,6 +27,12 @@ void setup()
 
     // soft reset(s), hard reset(s), pin, func ptr for soft reset
     WatchDog.begin({.trigger = 10.0, .timeout = 20.0, .pin = 13, .callback = WatchDogInterrupt});
+
+    // set up all sensors
+    Magnetometer.Init();
+    Barometer.Init();
+    AccelGyro.Init();
+    SensorAccum.AddSensor({&Magnetometer, &Barometer, &AccelGyro});
 }
 
 void loop()

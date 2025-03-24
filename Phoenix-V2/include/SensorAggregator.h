@@ -10,7 +10,7 @@
 class SensorAggregator
 {
 public:
-    SensorAggregator();
+    SensorAggregator() {};
     SensorAggregator(size_t Reserve) { m_SensorList.reserve(Reserve); }
 
     void AddSensor(Sensor* s) { m_SensorList.push_back(s); }
@@ -19,9 +19,8 @@ public:
     {
         for (const auto& s : S)
         {
-            m_SensorList.push_back(&s);
+            m_SensorList.push_back(s);
         }
-        return true;
     }
 
     // on failure, returns the previous successfully collected data
