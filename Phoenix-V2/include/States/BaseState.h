@@ -1,5 +1,4 @@
-#ifndef FLIGHT_COMPUTER_BASESTATE_H
-#define FLIGHT_COMPUTER_BASESTATE_H
+#pragma once
 
 #include "Sensor.h"
 #include <variant>
@@ -9,10 +8,11 @@ using FlightStateMemPool = std::variant<class Unarmed, class GroundIdle, class I
 
 enum FlightState : uint8_t
 {
-    eUnarmed,
-    eGroundIdle,
-    eInFlight,
-    eMainChute
+    FlightState_Unknown,
+    FlightState_Unarmed,
+    FlightState_GroundIdle,
+    FlightState_InFlight,
+    FlightState_MainChute
 };
 
 struct BaseState
@@ -27,9 +27,7 @@ struct BaseState
      * Finds the State of the current State
      * @return The state currently at
      */
-    [[nodiscard]] virtual FlightState inline GetState() const = 0;
+    [[nodiscard]] virtual FlightState GetState() const = 0;
 
     virtual ~BaseState() = default;
 };
-
-#endif // FLIGHT_COMPUTER_BASESTATE_H

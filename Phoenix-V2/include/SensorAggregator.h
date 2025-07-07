@@ -2,7 +2,6 @@
 
 #include "Sensor.h"
 #include <cstddef>
-#include <array>
 #include <vector>
 #include <utility>
 
@@ -13,9 +12,9 @@ public:
     SensorAggregator() {};
     SensorAggregator(size_t Reserve) { m_SensorList.reserve(Reserve); }
 
-    void AddSensor(Sensor* s) { m_SensorList.push_back(s); }
+    void AddSensor(ISensor* s) { m_SensorList.push_back(s); }
 
-    void AddSensor(const std::vector<Sensor*>& S)
+    void AddSensor(const std::vector<ISensor*>& S)
     {
         for (const auto& s : S)
         {
@@ -29,14 +28,13 @@ public:
         SensorData NewData;
         for (const auto& s : m_SensorList)
         {
-            if (!s->CollectData(NewData))
-            {
-                return {false, m_SensorData};
-            }
+            if (!s->CollectData(NewData)) { return {false, m_SensorData}; }
         }
         m_SensorData = NewData;
         return {true, m_SensorData};
     }
+
+    SensorData History() { return m_SensorData; }
 
     // finalizes the structure of the underlying storage type, potentially save storage
     void Stabilitze() { m_SensorList.shrink_to_fit(); }
@@ -45,6 +43,6 @@ public:
     SensorAggregator(SensorAggregator&)           = delete;
 
 private:
-    std::vector<Sensor*> m_SensorList;
+    std::vector<ISensor*> m_SensorList;
     SensorData m_SensorData {};
 };

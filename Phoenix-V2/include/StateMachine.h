@@ -1,6 +1,5 @@
 #pragma once
 #include <Arduino.h>
-
 #include "States.h"
 
 /**
@@ -9,23 +8,30 @@
 class StateMachine
 {
 public:
-	/**
-	 * Initialize and enter into Unarmed state
-	 */
-	explicit StateMachine();
+    /**
+     * Initialize and enter into Unarmed state
+     */
+    explicit StateMachine();
 
-	/**
-	 * Performs state action
-	 * @return The current state
-	 */
-	FlightState Run(const SensorData&);
+    /**
+     * Performs state action
+     * @return The current state
+     */
+    FlightState Run(const SensorData&);
 
-	FlightState GetState() const;
+    FlightState GetState() const;
 
-	StateMachine(StateMachine&) = delete;
+    // State better be a valid state
+    template <typename State>
+    FlightState EnterState()
+    {
+        return m_MemPool.emplace<State>();
+    }
 
-	StateMachine& operator =(StateMachine&) = delete;
+    StateMachine(StateMachine&) = delete;
+
+    StateMachine& operator=(StateMachine&) = delete;
 
 private:
-	FlightStateMemPool m_MemPool{};
+    FlightStateMemPool m_MemPool {};
 };

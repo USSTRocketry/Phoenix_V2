@@ -1,20 +1,18 @@
 #pragma once
 
-#include <Adafruit_BMP280.h>
 #include <cstdint>
+
+#include "Avionics_HAL.h"
 #include "Sensor.h"
 
-class BMP280 : public Sensor
+class BMP280 : public ISensor
 {
 public:
-    BMP280(uint8_t i2c_addr, TwoWire* i2c_wire) : m_BMP(i2c_wire), m_I2C_Addr(i2c_addr), m_I2C_Wire(i2c_wire) {}
+    BMP280(auto... arg) : m_BMP(std::forward<decltype(arg)>(arg)...) {}
 
     bool Init();
     bool CollectData(SensorData&);
 
 private:
-    Adafruit_BMP280 m_BMP;
-    float m_GroundAltitude;
-    uint8_t m_I2C_Addr;
-    TwoWire* m_I2C_Wire;
+    SensorBMP280 m_BMP;
 };

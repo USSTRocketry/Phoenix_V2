@@ -1,3 +1,6 @@
 [submodule "Phoenix-V2/lib/WDT_T4"]
 	path = Phoenix-V2/lib/WDT_T4
 	url = https://github.com/tonton81/WDT_T4.git
+[submodule "Phoenix-V2/lib/HAL"]
+	path = Phoenix-V2/lib/HAL
+	url = git@github.com:USSTRocketry/HAL.git
