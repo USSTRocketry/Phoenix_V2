@@ -10,7 +10,7 @@ FlightState GroundIdle::Run(const SensorData& SD, FlightStateMemPool& MemPool)
     if (calibration::GroundNormal.dot(SD.AccelGyroData.Accel) > 2)
     {
         // transition to new state, will break SM if you create random obj
-        return MemPool.emplace<InFlight>().GetState();
+        return MemPool.emplace<InFlight>(SD.BMP280.Altitude).GetState();
     }
     return GetState();
 }

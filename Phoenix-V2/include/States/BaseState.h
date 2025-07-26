@@ -1,6 +1,6 @@
 #pragma once
 
-#include "Sensor.h"
+#include "SensorInterface.h"
 #include <variant>
 #include <cstdint>
 
@@ -29,5 +29,6 @@ struct BaseState
      */
     [[nodiscard]] virtual FlightState GetState() const = 0;
 
+public:
     virtual ~BaseState() = default;
 };

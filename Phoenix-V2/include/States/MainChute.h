@@ -14,8 +14,10 @@ public:
     [[nodiscard]]
     FlightState GetState() const override;
 
+public:
+    MainChute();
     ~MainChute() override = default;
 
 private:
-    uint32_t m_Steady {0};
+    uint32_t m_SteadyCounter {0};
 };

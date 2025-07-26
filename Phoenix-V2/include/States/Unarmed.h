@@ -15,5 +15,6 @@ public:
     [[nodiscard]]
     FlightState GetState() const override;
 
+public:
     ~Unarmed() override = default;
 };

@@ -9,14 +9,16 @@ FlightState MainChute::Run(const SensorData& SD, FlightStateMemPool&)
 
     if (Diff < Epsilon)
     {
-        m_Steady++;
-        if (m_Steady > 10)
+        m_SteadyCounter++;
+        if (m_SteadyCounter > 10)
         {
             // Sleep
         }
     }
-    m_Steady = 0;
+    m_SteadyCounter = 0;
     return GetState();
 }
 
 FlightState MainChute::GetState() const { return FlightState_MainChute; }
+
+MainChute::MainChute() { ra::global::ParachuteDeployed = true; }

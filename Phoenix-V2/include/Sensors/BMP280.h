@@ -1,17 +1,17 @@
 #pragma once
 
 #include <cstdint>
+#include "SensorDef.h"
+#include "SensorInterface.h"
 
-#include "Avionics_HAL.h"
-#include "Sensor.h"
-
-class BMP280 : public ISensor
+class BMP280 : public ISensor<SensorData>
 {
 public:
-    BMP280(auto... arg) : m_BMP(std::forward<decltype(arg)>(arg)...) {}
-
     bool Init();
     bool CollectData(SensorData&);
+
+public:
+    CtorWrapper(BMP280, m_BMP);
 
 private:
     SensorBMP280 m_BMP;

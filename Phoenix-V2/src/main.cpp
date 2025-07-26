@@ -2,27 +2,42 @@
 #include "Watchdog_t4.h"
 
 #include "Global.h"
+#include "States.h"
 #include "StateMachine.h"
+
 #include "SensorAggregator.h"
 #include "Sensors/LSM6.h"
 #include "Sensors/BMP280.h"
 #include "Sensors/LIS3MDL.h"
-#include "States.h"
 
-StateMachine SM;
-SensorAggregator SensorAccum;
+#include "Filter/LowPass.h"
+
 WDT_T4<WDT2> WatchDog;
 
+StateMachine SM;
+SensorAggregator<SensorData> SensorAccum;
+Filter::LowPass LowPassFilter {0.65};
+
+// Sensor list
 LIS3MDL Magnetometer;
 BMP280 Barometer;
 LSM6 AccelGyro;
 
+void Execute();
+
 void WatchDogInterrupt()
 {
+    if (!ra::global::ParachuteDeployed)
+    {
+        // wait for parachute deployment
+        SM.EnterState<InFlight>(LowPassFilter.History().BMP280.Altitude);
+    }
+
     // soft reset
     while (true)
     {
         WatchDog.feed();
+        Execute();
     }
 }
 
@@ -46,21 +61,33 @@ void setup()
     {
         WatchDog.feed();
 
-        auto Result = SensorAccum.Collect().first;
-        if (!Result) { ReadingMiss++; }
+        auto [Result, Data] = SensorAccum.Collect();
+        if (!Result)
+        {
+            ReadingMiss++;
+            continue;
+        }
+
+        LowPassFilter.Filter(Data);
     }
     if (ReadingMiss > 25) { assert(false); }
 
-    ra::global::calibration::SensorData = SensorAccum.History();
+    ra::global::calibration::SensorData = LowPassFilter.History();
 }
 
 void loop()
 {
     WatchDog.feed();
+    Execute();
+}
 
+void Execute()
+{
     auto [Result, Data] = SensorAccum.Collect();
     if (!Result) { Serial.println("data collection failed"); }
 
-    SM.Run(Data);
-    ra::global::calibration::SensorData = SensorAccum.History();
+    auto Filtered = LowPassFilter.Filter(Data);
+    SM.Run(Filtered);
+
+    // ra::global::calibration::SensorData = Filtered;
 }

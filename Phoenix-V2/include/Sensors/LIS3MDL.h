@@ -1,17 +1,17 @@
 #pragma once
 
 #include <cstdint>
+#include "SensorDef.h"
+#include "SensorInterface.h"
 
-#include "Avionics_HAL.h"
-#include "Sensor.h"
-
-class LIS3MDL : public ISensor
+class LIS3MDL : public ISensor<SensorData>
 {
 public:
-    LIS3MDL(auto... arg) : m_LIS3(std::forward<decltype(arg)>(arg)...) {}
-
     bool Init();
     bool CollectData(SensorData&);
+
+public:
+    CtorWrapper(LIS3MDL, m_LIS3);
 
 private:
     SensorMagnetometer m_LIS3;

@@ -9,11 +9,6 @@ class StateMachine
 {
 public:
     /**
-     * Initialize and enter into Unarmed state
-     */
-    explicit StateMachine();
-
-    /**
      * Performs state action
      * @return The current state
      */
@@ -22,14 +17,19 @@ public:
     FlightState GetState() const;
 
     // State better be a valid state
-    template <typename State>
-    FlightState EnterState()
+    template <typename State, typename... Arg>
+    FlightState EnterState(Arg&&... Args)
     {
-        return m_MemPool.emplace<State>();
+        return m_MemPool.emplace<State>(std::forward<Arg>(Args)...).GetState();
     }
 
-    StateMachine(StateMachine&) = delete;
+public:
+    /**
+     * Initialize and enter into Unarmed state
+     */
+    explicit StateMachine();
 
+    StateMachine(StateMachine&)            = delete;
     StateMachine& operator=(StateMachine&) = delete;
 
 private:

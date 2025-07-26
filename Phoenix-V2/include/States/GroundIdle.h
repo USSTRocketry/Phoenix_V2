@@ -14,5 +14,6 @@ public:
     [[nodiscard]]
     FlightState GetState() const override;
 
+public:
     ~GroundIdle() override = default;
 };

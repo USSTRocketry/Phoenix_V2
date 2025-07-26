@@ -3,13 +3,14 @@
 
 FlightState InFlight::Run(const SensorData& SD, FlightStateMemPool& MemPool)
 {
-    using namespace ra::global;
-
     // determine if we hit apogee
-    if (calibration::SensorData.BMP280.Altitude > SD.BMP280.Altitude)
+    if (m_Altitude > SD.BMP280.Altitude)
     {
-        return MemPool.emplace<MainChute>().GetState();
+        m_ApogeeCounter++;
+        if (m_ApogeeCounter < m_MinApogeeCount) { return MemPool.emplace<MainChute>().GetState(); }
     }
+
+    m_Altitude = SD.BMP280.Altitude;
     return GetState();
 }
 

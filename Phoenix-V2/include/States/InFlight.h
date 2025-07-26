@@ -14,5 +14,12 @@ public:
     [[nodiscard]]
     FlightState GetState() const override;
 
+public:
+    explicit InFlight(float CurrentAltitude) : m_Altitude(CurrentAltitude) {}
     ~InFlight() override = default;
+
+private:
+    static constexpr uint32_t m_MinApogeeCount = 10;
+    uint32_t m_ApogeeCounter {};
+    float m_Altitude;
 };
