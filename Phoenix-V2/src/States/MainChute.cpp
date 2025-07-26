@@ -15,7 +15,7 @@ FlightState MainChute::Run(const SensorData& SD, FlightStateMemPool&)
             // Sleep
         }
     }
-    m_SteadyCounter = 0;
+    else { m_SteadyCounter = 0; }
     return GetState();
 }
 

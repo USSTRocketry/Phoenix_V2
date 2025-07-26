@@ -9,8 +9,8 @@ FlightState InFlight::Run(const SensorData& SD, FlightStateMemPool& MemPool)
         m_ApogeeCounter++;
         if (m_ApogeeCounter < m_MinApogeeCount) { return MemPool.emplace<MainChute>().GetState(); }
     }
+    else { m_Altitude = SD.BMP280.Altitude; }
 
-    m_Altitude = SD.BMP280.Altitude;
     return GetState();
 }
 
