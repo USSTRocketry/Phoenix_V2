@@ -1,10 +1,11 @@
 #include "States.h"
 #include "Global.h"
+#include "SDHandler.h"
 
-FlightState MainChute::Run(const SensorData& SD, FlightStateMemPool&)
+FlightState MainChute::Run(const SensorData& SensorData, FlightStateMemPool&)
 {
     constexpr auto Epsilon = 10;
-    auto Norm              = SD.AccelGyroData.Accel.norm();
+    auto Norm              = SensorData.AccelGyroData.Accel.norm();
     auto Diff              = abs(ra::global::calibration::SensorData.AccelGyroData.Accel.norm() - Norm);
 
     if (Diff < Epsilon)
@@ -13,6 +14,7 @@ FlightState MainChute::Run(const SensorData& SD, FlightStateMemPool&)
         if (m_SteadyCounter > 10)
         {
             // Sleep
+            StoreStringLineToCSV("FC steady, enter sleep");
         }
     }
     else { m_SteadyCounter = 0; }

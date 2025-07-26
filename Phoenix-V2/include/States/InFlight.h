@@ -15,7 +15,7 @@ public:
     FlightState GetState() const override;
 
 public:
-    explicit InFlight(float CurrentAltitude) : m_Altitude(CurrentAltitude) {}
+    explicit InFlight(float CurrentAltitude);
     ~InFlight() override = default;
 
 private:

@@ -15,7 +15,7 @@ public:
     SensorData History() const { return m_History; }
 
 public:
-    LowPass(float Alpha = 0.5, SensorData History = {}) : m_Alpha(Alpha), m_History(History)
+    explicit LowPass(float Alpha = 0.5, SensorData History = {}) : m_Alpha(Alpha), m_History(History)
     {
         assert(0 <= m_Alpha && m_Alpha <= 1);
     }

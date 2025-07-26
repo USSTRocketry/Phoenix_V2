@@ -12,10 +12,12 @@
 
 #include "Filter/LowPass.h"
 
+#include "SDHandler.h"
+
 WDT_T4<WDT2> WatchDog;
 
 StateMachine SM;
-SensorAggregator<SensorData> SensorAccum;
+SensorAggregator<SensorData> SensorAccumulator;
 Filter::LowPass LowPassFilter {0.65};
 
 // Sensor list
@@ -27,8 +29,10 @@ void Execute();
 
 void WatchDogInterrupt()
 {
+    StoreStringLineToCSV("Watchdog soft interrupt!");
     if (!ra::global::ParachuteDeployed)
     {
+        StoreStringLineToCSV("Watchdog enter InFlight");
         // wait for parachute deployment
         SM.EnterState<InFlight>(LowPassFilter.History().BMP280.Altitude);
     }
@@ -43,36 +47,48 @@ void WatchDogInterrupt()
 
 void setup()
 {
-    Serial.begin(0);
+    Serial.begin(9600);
 
     // soft reset(sec), hard reset(sec), pin, fn_ptr for soft reset
     WatchDog.begin({.trigger = 10.0, .timeout = 20.0, .pin = 13, .callback = WatchDogInterrupt});
 
     // set up all sensors
-    Magnetometer.Init();
-    Barometer.Init();
-    AccelGyro.Init();
-    SensorAccum.AddSensor({&Magnetometer, &Barometer, &AccelGyro});
+    {
+        bool SensorInitStatus = Magnetometer.Init();
+        SensorInitStatus &= Barometer.Init();
+        SensorInitStatus &= AccelGyro.Init();
+        SensorAccumulator.AddSensor({&Magnetometer, &Barometer, &AccelGyro});
+    }
 
     // calibrate and obtain initial readings
     // make sure the GroundNormal is always pointing up
-    auto ReadingMiss {0};
-    for (auto i = 0; i < 50; i++)
     {
-        WatchDog.feed();
+        auto ReadingMiss {0};
+        constexpr int CalibrateIteration = 50;
 
-        auto [Result, Data] = SensorAccum.Collect();
-        if (!Result)
+        for (auto i = 0; i < CalibrateIteration; i++)
         {
-            ReadingMiss++;
-            continue;
+            WatchDog.feed();
+
+            auto [Result, Data] = SensorAccumulator.Collect();
+            if (!Result)
+            {
+                ReadingMiss++;
+                continue;
+            }
+
+            LowPassFilter.Filter(Data);
+        }
+        if (ReadingMiss > CalibrateIteration / 2)
+        {
+            StoreStringLineToCSV("Calibration failed");
+            assert(false);
         }
 
-        LowPassFilter.Filter(Data);
+        ra::global::calibration::SensorData = LowPassFilter.History();
     }
-    if (ReadingMiss > 25) { assert(false); }
 
-    ra::global::calibration::SensorData = LowPassFilter.History();
+    StoreStringLineToCSV("FC Start");
 }
 
 void loop()
@@ -83,11 +99,9 @@ void loop()
 
 void Execute()
 {
-    auto [Result, Data] = SensorAccum.Collect();
-    if (!Result) { Serial.println("data collection failed"); }
+    auto [Result, Data] = SensorAccumulator.Collect();
+    if (!Result) { StoreStringLineToCSV("data collection failed"); }
 
     auto Filtered = LowPassFilter.Filter(Data);
     SM.Run(Filtered);
-
-    // ra::global::calibration::SensorData = Filtered;
 }
