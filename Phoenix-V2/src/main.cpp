@@ -21,9 +21,9 @@ SensorAggregator<SensorData> SensorAccumulator;
 Filter::LowPass LowPassFilter {0.65};
 
 // Sensor list
-LIS3MDL Magnetometer;
+LIS3MDL Magnetometer(0x1E, I2C_WIRE0);
 BMP280 Barometer;
-LSM6 AccelGyro;
+LSM6 AccelGyro(0x6B, I2C_WIRE0);
 
 void Execute();
 
@@ -47,8 +47,20 @@ void WatchDogInterrupt()
 
 void setup()
 {
-    Serial.begin(9600);
+    Serial.begin(115200);
+    delay(3000);
+    Serial.println("Setup");
+    pinMode(LED_BUILTIN, OUTPUT);
+    // digitalWrite(LED_BUILTIN, LOW);
 
+    // for(int i=0; i<10; i++) {
+    //     digitalWrite(LED_BUILTIN, HIGH);
+    //     delay(1000);
+    //     digitalWrite(LED_BUILTIN, LOW);
+    //     delay(1000);
+    // }
+    
+    
     // soft reset(sec), hard reset(sec), pin, fn_ptr for soft reset
     WatchDog.begin({.trigger = 10.0, .timeout = 20.0, .pin = 13, .callback = WatchDogInterrupt});
 
@@ -89,12 +101,17 @@ void setup()
     }
 
     StoreStringLineToCSV("FC Start");
+    Serial.println("FC Start 2");
+
+
 }
 
 void loop()
 {
     WatchDog.feed();
     Execute();
+    delay(1000);
+
 }
 
 void Execute()

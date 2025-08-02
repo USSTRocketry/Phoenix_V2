@@ -16,8 +16,8 @@ struct SensorData
     struct AccelGyroData
     {
         float Temperature;
-        Eigen::Vector3f Accel;
-        Eigen::Vector3f Gyro;
+        Eigen::Vector3f Accel{};
+        Eigen::Vector3f Gyro{};
     } AccelGyroData {};
 
 public:
