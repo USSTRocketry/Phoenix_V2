@@ -29,16 +29,13 @@ void print_sensor_data(const SensorData* sensorData) {
 
 namespace Filter
 {
-SensorData LowPass::Filter(const SensorData& NewData) { 
-    SensorData temp = m_History * m_Alpha + NewData * (1 - m_Alpha); 
-    Serial.println("Temp: ");
-    print_sensor_data(&temp);
-    Serial.println("History: ");
-    print_sensor_data(&m_History);
-    Serial.println("Alpha: ");
-    Serial.println(m_Alpha);
-    Serial.println("New Data: ");
-    print_sensor_data(&NewData);
-
-}
+    SensorData LowPass::Filter(const SensorData& NewData) { 
+        
+        SensorData temp = m_History * m_Alpha + NewData * (1 - m_Alpha); 
+        // Serial.println("Temp: ");
+        // print_sensor_data(&temp);
+        
+        m_History = temp;
+        return m_History;
+    }
 } // namespace Filter

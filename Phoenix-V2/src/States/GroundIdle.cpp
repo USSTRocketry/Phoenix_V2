@@ -7,9 +7,22 @@ FlightState GroundIdle::Run(const SensorData& SensorData, FlightStateMemPool& Me
 {
     using namespace ra::global;
 
+    Serial.println("Dot product: ");
+    Serial.println(calibration::GroundNormal.x());
+    Serial.println(calibration::GroundNormal.y());
+    Serial.println(calibration::GroundNormal.z());
+    Serial.println("Accel: ");
+    Serial.println((SensorData.AccelGyroData.Accel.x()));
+    Serial.println((SensorData.AccelGyroData.Accel.y()));
+    Serial.println((SensorData.AccelGyroData.Accel.z()));
+
     // we might need to normalize the vectors before we dot product
     // as a hack make the dot product abs value. BAD !!!!
-    if (calibration::GroundNormal.dot(SensorData.AccelGyroData.Accel) > 1.1)
+    float Magnitude = calibration::GroundNormal.norm();
+    float CurrentMagnitude = calibration::GroundNormal.dot(SensorData.AccelGyroData.Accel) / Magnitude;
+    Serial.println("Current Magnitude: ");
+    Serial.println(CurrentMagnitude);
+    if ( CurrentMagnitude > 2)
     {
         StoreStringLineToCSV("Switching State");
         StoreStringLineToCSV("Accel X : " + std::to_string(SensorData.AccelGyroData.Accel.x()) + " Y " +
@@ -20,15 +33,7 @@ FlightState GroundIdle::Run(const SensorData& SensorData, FlightStateMemPool& Me
         return MemPool.emplace<InFlight>(SensorData.BMP280.Altitude).GetState();
     }
 
-    Serial.println("Dot product: ");
-    Serial.println(calibration::GroundNormal.x());
-    Serial.println(calibration::GroundNormal.y());
-    Serial.println(calibration::GroundNormal.z());
-    Serial.println("Accel: ");
-    Serial.println((SensorData.AccelGyroData.Accel.x()));
-    Serial.println((SensorData.AccelGyroData.Accel.y()));
-    Serial.println((SensorData.AccelGyroData.Accel.z()));
-
+    
     return GetState();
 }
 

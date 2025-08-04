@@ -98,6 +98,7 @@ void setup()
         }
 
         ra::global::calibration::SensorData = LowPassFilter.History();
+        ra::global::calibration::GroundNormal = ra::global::calibration::SensorData.AccelGyroData.Accel;
     }
 
     StoreStringLineToCSV("FC Start");
