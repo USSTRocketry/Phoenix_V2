@@ -19,7 +19,6 @@ public:
     ~InFlight() override = default;
 
 private:
-    static constexpr uint32_t m_MinApogeeCount = 10;
     uint32_t m_ApogeeCounter {};
-    float m_Altitude;
+    float m_Apogee;
 };

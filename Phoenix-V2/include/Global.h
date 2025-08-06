@@ -13,6 +13,12 @@ constexpr size_t SensorCount = 10;
 // "ground truth" calibration values
 namespace ra::global::calibration
 {
-extern Eigen::Vector3f GroundNormal;
+struct GroundNormalData
+{
+    Eigen::Vector3f Direction;
+    float Magnitude;
+};
+extern GroundNormalData GroundNormal;
+
 extern SensorData SensorData;
 } // namespace ra::global::calibration

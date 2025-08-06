@@ -10,26 +10,28 @@ FlightState InFlight::Run(const SensorData& SensorData, FlightStateMemPool& MemP
     Serial.println(SensorData.BMP280.Altitude);
 
     Serial.println("m_Alt:");
-    Serial.println(m_Altitude);
-    
-    // m_Altitude increases/decreases with BMP280 altitude. If case is never true. Altitude is sensitive so can't compare directly,
-    // need a factor, but the factor doesn't factor due to the small steps.
-    if (m_Altitude > SensorData.BMP280.Altitude)
+    Serial.println(m_Apogee);
+
+    constexpr uint32_t MinApogeeCount = 10;
+    const auto& RefAlt                = SensorData.BMP280.Altitude;
+    constexpr auto Epsilon            = 2;
+
+    if (m_Apogee > RefAlt && (m_Apogee - RefAlt) > Epsilon)
     {
-        // if (m_Altitude > SensorData.BMP280.Altitude)
         m_ApogeeCounter++;
-        StoreStringLineToCSV("Alt low : Prev " + std::to_string(m_Altitude) + " New " +
+        StoreStringLineToCSV("Alt low : Prev " + std::to_string(m_Apogee) + " New " +
                              std::to_string(SensorData.BMP280.Altitude));
 
-        if (m_ApogeeCounter > m_MinApogeeCount)
+        if (m_ApogeeCounter > MinApogeeCount)
         {
             StoreStringLineToCSV("Switching State");
             return MemPool.emplace<MainChute>().GetState();
         }
     }
-    else { 
-        m_Altitude = SensorData.BMP280.Altitude;
-        m_ApogeeCounter = 0; 
+    else
+    {
+        m_Apogee        = RefAlt;
+        m_ApogeeCounter = 0;
     }
 
     Serial.println("Apogee Counter: ");
@@ -40,7 +42,7 @@ FlightState InFlight::Run(const SensorData& SensorData, FlightStateMemPool& MemP
 
 FlightState InFlight::GetState() const { return FlightState_InFlight; }
 
-InFlight::InFlight(float CurrentAltitude) : m_Altitude(CurrentAltitude)
+InFlight::InFlight(float CurrentAltitude) : m_Apogee(CurrentAltitude)
 {
     StoreStringLineToCSV("Current State : " + std::to_string(GetState()));
     StoreStringLineToCSV("BMP Alt : " + std::to_string(CurrentAltitude));

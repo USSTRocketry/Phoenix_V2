@@ -59,8 +59,7 @@ void setup()
     //     digitalWrite(LED_BUILTIN, LOW);
     //     delay(1000);
     // }
-    
-    
+
     // soft reset(sec), hard reset(sec), pin, fn_ptr for soft reset
     WatchDog.begin({.trigger = 10.0, .timeout = 20.0, .pin = 13, .callback = WatchDogInterrupt});
 
@@ -97,14 +96,14 @@ void setup()
             assert(false);
         }
 
-        ra::global::calibration::SensorData = LowPassFilter.History();
-        ra::global::calibration::GroundNormal = ra::global::calibration::SensorData.AccelGyroData.Accel;
+        ra::global::calibration::SensorData   = LowPassFilter.History();
+        float AccelMag                        = ra::global::calibration::SensorData.AccelGyroData.Accel.norm();
+        ra::global::calibration::GroundNormal = {ra::global::calibration::SensorData.AccelGyroData.Accel / AccelMag,
+                                                 AccelMag};
     }
 
     StoreStringLineToCSV("FC Start");
     Serial.println("FC Start 2");
-
-
 }
 
 void loop()
@@ -112,7 +111,6 @@ void loop()
     WatchDog.feed();
     Execute();
     delay(1000);
-
 }
 
 void Execute()
