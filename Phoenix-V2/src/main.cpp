@@ -18,7 +18,7 @@ WDT_T4<WDT2> WatchDog;
 
 StateMachine SM;
 SensorAggregator<SensorData> SensorAccumulator;
-Filter::LowPass LowPassFilter {0.65};
+Filter::LowPass LowPassFilter {0.4};
 
 // Sensor list
 LIS3MDL Magnetometer(0x1E, I2C_WIRE0);

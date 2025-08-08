@@ -7,8 +7,20 @@ FlightState GroundIdle::Run(const SensorData& SensorData, FlightStateMemPool& Me
 {
     using namespace ra::global;
 
-    constexpr auto Delta          = 2;
+    constexpr auto Delta          = 15.f; // change back to 2 after testing
     float GroundRelativeMagnitude = calibration::GroundNormal.Direction.dot(SensorData.AccelGyroData.Accel);
+    Serial.println("GroundRelativeMagnitude:");
+    Serial.println(GroundRelativeMagnitude);
+    static int temp_flag = 1;
+    if(temp_flag){
+    StoreStringLineToCSV("Ground Normal X : " + std::to_string(calibration::GroundNormal.Direction.x()) + " Y " +
+                             std::to_string(calibration::GroundNormal.Direction.y()) + " Z " +
+                             std::to_string(calibration::GroundNormal.Direction.z()));
+        temp_flag = 0;
+    }
+    StoreStringLineToCSV("Accel X : " + std::to_string(SensorData.AccelGyroData.Accel.x()) + " Y " +
+                             std::to_string(SensorData.AccelGyroData.Accel.y()) + " Z " +
+                             std::to_string(SensorData.AccelGyroData.Accel.z()));
 
     if (GroundRelativeMagnitude > Delta)
     {
