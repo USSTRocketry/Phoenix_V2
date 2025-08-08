@@ -13,6 +13,7 @@ FlightState MainChute::Run(const SensorData& SensorData, FlightStateMemPool&)
     if (Diff < Epsilon)
     {
         m_SteadyCounter++;
+        StoreStringLineToCSV("Steady State Counter: " + std::to_string(m_SteadyCounter));
         if (m_SteadyCounter > MaxSteadyCount)
         {
             // Sleep

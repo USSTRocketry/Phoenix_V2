@@ -5,16 +5,9 @@
 
 FlightState InFlight::Run(const SensorData& SensorData, FlightStateMemPool& MemPool)
 {
-    // determine if we hit apogee
-    Serial.println("Alt:");
-    Serial.println(SensorData.BMP280.Altitude);
-
-    Serial.println("m_Alt:");
-    Serial.println(m_Apogee);
-
-    constexpr uint32_t MinApogeeCount = 10;
+    constexpr uint32_t MinApogeeCount = 5;
     const auto& RefAlt                = SensorData.BMP280.Altitude;
-    constexpr auto Epsilon            = 0.3f; // change back to 2 when done testing
+    constexpr auto Epsilon            = 2;
 
     if (RefAlt > m_Apogee) {
         m_Apogee        = RefAlt;
@@ -32,8 +25,7 @@ FlightState InFlight::Run(const SensorData& SensorData, FlightStateMemPool& MemP
             }
     }
 
-    Serial.println("Apogee Counter: ");
-    Serial.println(m_ApogeeCounter);
+    StoreStringLineToCSV("Apogee Counter: " + std::to_string(m_ApogeeCounter));
 
     return GetState();
 }

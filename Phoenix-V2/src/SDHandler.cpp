@@ -25,28 +25,28 @@ bool InitSD()
     // UNCOMMENT THESE TWO LINES FOR TEENSY AUDIO BOARD:
     // SPI.setMOSI(7);  // Audio shield has MOSI on pin 7
     // SPI.setSCK(14);  // Audio shield has SCK on pin 14
-    // FLASHMEM
-    // 
-    // Serial.println("Initializing SD card...");
-    // if (!SD.begin(chipSelect))
-    // {
-    //     Serial.println("initialization failed!");
-    //     return false;
-    // }
+    FLASHMEM
+
+    Serial.println("Initializing SD card...");
+    if (!SD.begin(chipSelect))
+    {
+        Serial.println("initialization failed!");
+        return false;
+    }
     // Open serial communications and wait for port to open:
-    // Serial.begin(9600);
-    //  while (!Serial) {
-    //   ; // wait for serial port to connect.
-    // }
-    // Serial.println("SD card initialized.");
+    Serial.begin(9600);
+    while (!Serial)
+    {
+        ; // wait for serial port to connect.
+    }
+    Serial.println("SD card initialized.");
 
     return true;
 }
 
 void StoreStringLineToCSV(std::string stringline)
 {
-    // File f = SD.open("FlightData.csv", FILE_WRITE);
-    // f.println(stringline.c_str());
-    Serial.println(stringline.c_str());
-    // f.close();
+    File f = SD.open("FlightData.csv", FILE_WRITE);
+    f.println(stringline.c_str());
+    f.close();
 }
