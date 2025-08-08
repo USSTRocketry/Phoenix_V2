@@ -7,6 +7,6 @@ bool ParachuteDeployed {false};
 
 namespace ra::global::calibration
 {
-Eigen::Vector3f GroundNormal {};
+GroundNormalData GroundNormal {Eigen::Vector3f::Zero(), 0.f};
 struct SensorData SensorData {};
 } // namespace ra::global::calibration

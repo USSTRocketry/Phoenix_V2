@@ -4,14 +4,17 @@
 
 FlightState MainChute::Run(const SensorData& SensorData, FlightStateMemPool&)
 {
-    constexpr auto Epsilon = 10;
-    auto Norm              = SensorData.AccelGyroData.Accel.norm();
-    auto Diff              = abs(ra::global::calibration::SensorData.AccelGyroData.Accel.norm() - Norm);
+    constexpr auto Epsilon        = 10;
+    constexpr auto MaxSteadyCount = 50;
+    // consider using BMP altitude
+    auto Norm                     = SensorData.AccelGyroData.Accel.norm();
+    auto Diff                     = abs(ra::global::calibration::SensorData.AccelGyroData.Accel.norm() - Norm);
 
     if (Diff < Epsilon)
     {
         m_SteadyCounter++;
-        if (m_SteadyCounter > 10)
+        StoreStringLineToCSV("Steady State Counter: " + std::to_string(m_SteadyCounter));
+        if (m_SteadyCounter > MaxSteadyCount)
         {
             // Sleep
             StoreStringLineToCSV("FC steady, enter sleep");

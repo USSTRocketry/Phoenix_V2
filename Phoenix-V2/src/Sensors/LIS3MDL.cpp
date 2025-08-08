@@ -7,8 +7,7 @@ bool LIS3MDL::CollectData(SensorData& Data)
     MagnetometerData* D = m_LIS3.read();
     if (!D) { return false; }
 
-    Data.Magnetic.x() = D->magneticX;
-    Data.Magnetic.y() = D->magneticY;
-    Data.Magnetic.z() = D->magneticZ;
+    Data.Magnetic = {.X = D->magneticX, .Y = D->magneticY, .Z = D->magneticZ};
+
     return true;
 }

@@ -4,7 +4,7 @@
 
 struct SensorData
 {
-    Eigen::Vector3f Magnetic {};
+    Eigen::Vector3f Magnetic {Eigen::Vector3f::Zero()};
 
     struct BMP280
     {
@@ -16,8 +16,8 @@ struct SensorData
     struct AccelGyroData
     {
         float Temperature;
-        Eigen::Vector3f Accel;
-        Eigen::Vector3f Gyro;
+        Eigen::Vector3f Accel {Eigen::Vector3f::Zero()};
+        Eigen::Vector3f Gyro {Eigen::Vector3f::Zero()};
     } AccelGyroData {};
 
 public:

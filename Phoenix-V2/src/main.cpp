@@ -18,12 +18,12 @@ WDT_T4<WDT2> WatchDog;
 
 StateMachine SM;
 SensorAggregator<SensorData> SensorAccumulator;
-Filter::LowPass LowPassFilter {0.65};
+Filter::LowPass LowPassFilter {0.6};
 
 // Sensor list
-LIS3MDL Magnetometer;
+LIS3MDL Magnetometer(0x1E, I2C_WIRE0);
 BMP280 Barometer;
-LSM6 AccelGyro;
+LSM6 AccelGyro(0x6B, I2C_WIRE0);
 
 void Execute();
 
@@ -47,7 +47,7 @@ void WatchDogInterrupt()
 
 void setup()
 {
-    Serial.begin(9600);
+    Serial.begin(115200);
 
     // soft reset(sec), hard reset(sec), pin, fn_ptr for soft reset
     WatchDog.begin({.trigger = 10.0, .timeout = 20.0, .pin = 13, .callback = WatchDogInterrupt});
@@ -85,7 +85,10 @@ void setup()
             assert(false);
         }
 
-        ra::global::calibration::SensorData = LowPassFilter.History();
+        ra::global::calibration::SensorData   = LowPassFilter.History();
+        float AccelMag                        = ra::global::calibration::SensorData.AccelGyroData.Accel.norm();
+        ra::global::calibration::GroundNormal = {ra::global::calibration::SensorData.AccelGyroData.Accel / AccelMag,
+                                                 AccelMag};
     }
 
     StoreStringLineToCSV("FC Start");

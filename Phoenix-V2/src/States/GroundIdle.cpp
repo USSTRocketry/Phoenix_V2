@@ -7,9 +7,10 @@ FlightState GroundIdle::Run(const SensorData& SensorData, FlightStateMemPool& Me
 {
     using namespace ra::global;
 
-    // we might need to normalize the vectors before we dot product
-    // as a hack make the dot product abs value. BAD !!!!
-    if (calibration::GroundNormal.dot(SensorData.AccelGyroData.Accel) > 2)
+    constexpr auto Delta          = 2;
+    float GroundRelativeMagnitude = calibration::GroundNormal.Direction.dot(SensorData.AccelGyroData.Accel);
+
+    if (GroundRelativeMagnitude > Delta)
     {
         StoreStringLineToCSV("Switching State");
         StoreStringLineToCSV("Accel X : " + std::to_string(SensorData.AccelGyroData.Accel.x()) + " Y " +
@@ -19,6 +20,7 @@ FlightState GroundIdle::Run(const SensorData& SensorData, FlightStateMemPool& Me
         // transition to new state, will break SM if you create random obj
         return MemPool.emplace<InFlight>(SensorData.BMP280.Altitude).GetState();
     }
+
     return GetState();
 }
 
