@@ -9,23 +9,24 @@ FlightState InFlight::Run(const SensorData& SensorData, FlightStateMemPool& MemP
     const auto& RefAlt                = SensorData.BMP280.Altitude;
     constexpr auto Epsilon            = 2;
 
-    if (RefAlt > m_Apogee) {
+    if (RefAlt > m_Apogee)
+    {
         m_Apogee        = RefAlt;
         m_ApogeeCounter = 0;
     }
-    else if((m_Apogee - RefAlt) > Epsilon){
-            m_ApogeeCounter++;
-            StoreStringLineToCSV("Alt low : Prev " + std::to_string(m_Apogee) + " New " +
-                                std::to_string(SensorData.BMP280.Altitude));
+    else if ((m_Apogee - RefAlt) > Epsilon)
+    {
+        m_ApogeeCounter++;
+        StoreStringLineToCSV("Apogee Counter: " + std::to_string(m_ApogeeCounter));
+        StoreStringLineToCSV("Alt low : Prev " + std::to_string(m_Apogee) + " New " +
+                             std::to_string(SensorData.BMP280.Altitude));
 
-            if (m_ApogeeCounter > MinApogeeCount)
-            {
-                StoreStringLineToCSV("Switching State");
-                return MemPool.emplace<MainChute>().GetState();
-            }
+        if (m_ApogeeCounter > MinApogeeCount)
+        {
+            StoreStringLineToCSV("Switching State");
+            return MemPool.emplace<MainChute>().GetState();
+        }
     }
-
-    StoreStringLineToCSV("Apogee Counter: " + std::to_string(m_ApogeeCounter));
 
     return GetState();
 }

@@ -8,10 +8,8 @@ bool LSM6::CollectData(SensorData& Data)
     if (!D) { return false; }
 
     Data.AccelGyroData.Temperature = D->temperature;
-
     Data.AccelGyroData.Accel       = {.X = D->accelX, .Y = D->accelY, .Z = D->accelZ};
     Data.AccelGyroData.Gyro        = {.X = D->gyroX, .Y = D->gyroY, .Z = D->gyroZ};
 
     return true;
 }
-
