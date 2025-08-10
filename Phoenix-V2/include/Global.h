@@ -8,6 +8,8 @@ namespace ra::global
 {
 extern bool ParachuteDeployed;
 constexpr size_t SensorCount = 10;
+
+extern bool Sleep;
 } // namespace ra::global
 
 // "ground truth" calibration values

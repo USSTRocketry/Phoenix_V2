@@ -3,6 +3,7 @@
 namespace ra::global
 {
 bool ParachuteDeployed {false};
+bool Sleep {false};
 } // namespace ra::global
 
 namespace ra::global::calibration

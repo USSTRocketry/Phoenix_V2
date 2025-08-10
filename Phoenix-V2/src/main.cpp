@@ -106,5 +106,6 @@ void Execute()
     if (!Result) { StoreStringLine("data collection failed"); }
 
     auto Filtered = LowPassFilter.Filter(Data);
-    StoreData(SM.Run(Filtered), Filtered);
+    auto State    = SM.Run(Filtered);
+    if (!ra::global::Sleep) { StoreData(State, Filtered); }
 }

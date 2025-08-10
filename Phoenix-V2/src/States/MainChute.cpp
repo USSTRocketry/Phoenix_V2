@@ -12,7 +12,7 @@ FlightState MainChute::Run(const SensorData& SensorData, FlightStateMemPool&)
     if (Diff < Epsilon)
     {
         m_SteadyCounter++;
-        if (m_SteadyCounter > MaxSteadyCount) {}
+        if (m_SteadyCounter > MaxSteadyCount) { ra::global::Sleep = true; }
     }
     else { m_SteadyCounter = 0; }
     return GetState();
