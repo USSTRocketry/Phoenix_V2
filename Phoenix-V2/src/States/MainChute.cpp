@@ -1,6 +1,5 @@
 #include "States.h"
 #include "Global.h"
-#include "SDHandler.h"
 
 FlightState MainChute::Run(const SensorData& SensorData, FlightStateMemPool&)
 {
@@ -13,12 +12,7 @@ FlightState MainChute::Run(const SensorData& SensorData, FlightStateMemPool&)
     if (Diff < Epsilon)
     {
         m_SteadyCounter++;
-        StoreStringLineToCSV("Steady State Counter: " + std::to_string(m_SteadyCounter));
-        if (m_SteadyCounter > MaxSteadyCount)
-        {
-            // Sleep
-            StoreStringLineToCSV("FC steady, enter sleep");
-        }
+        if (m_SteadyCounter > MaxSteadyCount) {}
     }
     else { m_SteadyCounter = 0; }
     return GetState();
