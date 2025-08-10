@@ -7,8 +7,9 @@ FlightState GroundIdle::Run(const SensorData& SensorData, FlightStateMemPool& Me
 
     constexpr auto Delta          = 2;
     float GroundRelativeMagnitude = calibration::GroundNormal.Direction.dot(SensorData.AccelGyroData.Accel);
+    float LaunchMagRatio          = GroundRelativeMagnitude / calibration::GroundNormal.Magnitude;
 
-    if (GroundRelativeMagnitude > Delta)
+    if (LaunchMagRatio > Delta)
     {
         // transition to new state, will break SM if you create random obj
         return MemPool.emplace<InFlight>(SensorData.BMP280.Altitude).GetState();

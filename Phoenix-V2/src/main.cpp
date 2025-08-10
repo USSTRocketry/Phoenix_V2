@@ -25,6 +25,7 @@ LIS3MDL Magnetometer(0x1E, I2C_WIRE0);
 BMP280 Barometer;
 LSM6 AccelGyro(0x6B, I2C_WIRE0);
 
+void Entry();
 void Execute();
 
 void WatchDogInterrupt()
@@ -40,8 +41,7 @@ void WatchDogInterrupt()
     // soft reset
     while (true)
     {
-        WatchDog.feed();
-        Execute();
+        Entry();
     }
 }
 
@@ -94,10 +94,12 @@ void setup()
     StoreStringLine("FC Start");
 }
 
-void loop()
+void loop() { Entry(); }
+
+void Entry()
 {
     WatchDog.feed();
-    Execute();
+    if (!ra::global::Sleep) { Execute(); }
 }
 
 void Execute()
@@ -106,6 +108,6 @@ void Execute()
     if (!Result) { StoreStringLine("data collection failed"); }
 
     auto Filtered = LowPassFilter.Filter(Data);
-    auto State    = SM.Run(Filtered);
-    if (!ra::global::Sleep) { StoreData(State, Filtered); }
+    StoreData(SM.Run(Filtered), Filtered);
+}
 }

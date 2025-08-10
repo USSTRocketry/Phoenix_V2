@@ -5,14 +5,14 @@ FlightState InFlight::Run(const SensorData& SensorData, FlightStateMemPool& MemP
 {
     constexpr uint32_t MinApogeeCount = 20;
     constexpr auto Epsilon            = 2;
-    const auto& RefAlt                = SensorData.BMP280.Altitude;
+    const auto& CurrentAlt            = SensorData.BMP280.Altitude;
 
-    if (RefAlt > m_Apogee)
+    if (CurrentAlt > m_Apogee)
     {
-        m_Apogee        = RefAlt;
+        m_Apogee        = CurrentAlt;
         m_ApogeeCounter = 0;
     }
-    else if ((m_Apogee - RefAlt) > Epsilon)
+    else if ((m_Apogee - CurrentAlt) > Epsilon)
     {
         m_ApogeeCounter++;
 
