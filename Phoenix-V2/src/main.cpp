@@ -12,7 +12,7 @@
 
 #include "Filter/LowPass.h"
 
-#include "SDHandler.h"
+#include "Log/DataStorage.h"
 
 WDT_T4<WDT2> WatchDog;
 
@@ -29,10 +29,10 @@ void Execute();
 
 void WatchDogInterrupt()
 {
-    StoreStringLineToCSV("Watchdog soft interrupt!");
+    StoreStringLine("Watchdog soft interrupt!");
     if (!ra::global::ParachuteDeployed)
     {
-        StoreStringLineToCSV("Watchdog enter InFlight");
+        StoreStringLine("Watchdog enter InFlight");
         // wait for parachute deployment
         SM.EnterState<InFlight>(LowPassFilter.History().BMP280.Altitude);
     }
@@ -81,7 +81,7 @@ void setup()
         }
         if (ReadingMiss > CalibrateIteration / 2)
         {
-            StoreStringLineToCSV("Calibration failed");
+            StoreStringLine("Calibration failed");
             assert(false);
         }
 
@@ -91,7 +91,7 @@ void setup()
                                                  AccelMag};
     }
 
-    StoreStringLineToCSV("FC Start");
+    StoreStringLine("FC Start");
 }
 
 void loop()
@@ -103,8 +103,8 @@ void loop()
 void Execute()
 {
     auto [Result, Data] = SensorAccumulator.Collect();
-    if (!Result) { StoreStringLineToCSV("data collection failed"); }
+    if (!Result) { StoreStringLine("data collection failed"); }
 
     auto Filtered = LowPassFilter.Filter(Data);
-    SM.Run(Filtered);
+    StoreData(SM.Run(Filtered), Filtered);
 }
