@@ -110,4 +110,3 @@ void Execute()
     auto Filtered = LowPassFilter.Filter(Data);
     StoreData(SM.Run(Filtered), Filtered);
 }
-}
