@@ -55,6 +55,9 @@ void setup()
     // initialize all sensors
     SensorAccumulator.Apply([](auto* Sensor) { Sensor->Init(); });
 
+    // init SD
+    InitDataStorage();
+
     // calibrate and obtain initial readings
     // make sure the GroundNormal is always pointing up
     {

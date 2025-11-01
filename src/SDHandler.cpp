@@ -48,5 +48,6 @@ void StoreStringLineToCSV(std::string stringline)
 {
     File f = SD.open("FlightData.csv", FILE_WRITE);
     f.println(stringline.c_str());
+    Serial.println(stringline.c_str());
     f.close();
 }

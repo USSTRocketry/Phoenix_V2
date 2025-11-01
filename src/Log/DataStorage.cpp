@@ -46,6 +46,8 @@ void InitSdCard()
 void InitDataStorage()
 {
     Serial.printf("InitDataStorage()");
+    InitSdCard();
+
     StoreStringLine(
         "State,Altitude,Pressure,Temperature,Acceleration_X,Acceleration_Y,Acceleration_Z,gyroX,gyroY,gyroZ,\
     magneticX,magneticY,magneticX,Timestamp");
@@ -54,8 +56,8 @@ void InitDataStorage()
 void StoreStringLine(std::string s)
 {
     File file = SD.open("/FlightData.fdat", O_APPEND);
-
     file.write(s.c_str());
+    Serial.println(s.c_str());
 
     file.close();
 }
