@@ -56,5 +56,7 @@ class ISensor
 public:
     // places the data into the param
     // true if successfully read and placed
+    virtual bool Init() { return false; }
     virtual bool CollectData(SensorDataType&) = 0;
+    virtual bool Destroy() { return false; }
 };

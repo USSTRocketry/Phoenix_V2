@@ -1,5 +1,7 @@
 #include "Sensors/BMP280.h"
 
+namespace ra
+{
 bool BMP280::Init() { return m_BMP.begin(); }
 
 bool BMP280::CollectData(SensorData& Data)
@@ -11,3 +13,4 @@ bool BMP280::CollectData(SensorData& Data)
 
     return true;
 }
+} // namespace ra

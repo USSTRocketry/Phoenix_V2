@@ -1,5 +1,7 @@
 #include "Sensors/LIS3MDL.h"
 
+namespace ra
+{
 bool LIS3MDL::Init() { return m_LIS3.begin(); }
 
 bool LIS3MDL::CollectData(SensorData& Data)
@@ -11,3 +13,4 @@ bool LIS3MDL::CollectData(SensorData& Data)
 
     return true;
 }
+} // namespace ra

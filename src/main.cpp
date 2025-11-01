@@ -17,13 +17,13 @@
 WDT_T4<WDT2> WatchDog;
 
 StateMachine SM;
-SensorAggregator<SensorData> SensorAccumulator;
 Filter::LowPass LowPassFilter {0.6};
 
 // Sensor list
-LIS3MDL Magnetometer(0x1E, I2C_WIRE0);
-BMP280 Barometer;
-LSM6 AccelGyro(0x6B, I2C_WIRE0);
+ra::LIS3MDL Magnetometer(0x1E, I2C_WIRE0);
+ra::BMP280 Barometer {};
+ra::LSM6 AccelGyro(0x6B, I2C_WIRE0);
+SensorAggregator<SensorData> SensorAccumulator {&Magnetometer, &Barometer, &AccelGyro};
 
 void Entry();
 void Execute();
@@ -52,13 +52,8 @@ void setup()
     // soft reset(sec), hard reset(sec), pin, fn_ptr for soft reset
     WatchDog.begin({.trigger = 10.0, .timeout = 20.0, .pin = 13, .callback = WatchDogInterrupt});
 
-    // set up all sensors
-    {
-        bool SensorInitStatus = Magnetometer.Init();
-        SensorInitStatus &= Barometer.Init();
-        SensorInitStatus &= AccelGyro.Init();
-        SensorAccumulator.AddSensor({&Magnetometer, &Barometer, &AccelGyro});
-    }
+    // initialize all sensors
+    SensorAccumulator.Apply([](auto* Sensor) { Sensor->Init(); });
 
     // calibrate and obtain initial readings
     // make sure the GroundNormal is always pointing up

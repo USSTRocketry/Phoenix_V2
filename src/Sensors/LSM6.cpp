@@ -1,5 +1,7 @@
 #include "Sensors/LSM6.h"
 
+namespace ra
+{
 bool LSM6::Init() { return m_LSM6.begin(); }
 
 bool LSM6::CollectData(SensorData& Data)
@@ -13,3 +15,4 @@ bool LSM6::CollectData(SensorData& Data)
 
     return true;
 }
+} // namespace ra
