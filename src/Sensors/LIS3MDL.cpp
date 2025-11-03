@@ -4,12 +4,20 @@ namespace ra
 {
 bool LIS3MDL::Init() { return m_LIS3.begin(); }
 
-bool LIS3MDL::CollectData(SensorData& Data)
+bool LIS3MDL::OnCollectData(SensorData& Data)
 {
     MagnetometerData* D = m_LIS3.read();
     if (!D) { return false; }
 
     Data.Magnetic = {.X = D->magneticX, .Y = D->magneticY, .Z = D->magneticZ};
+
+    return true;
+}
+
+bool LIS3MDL::History(SensorData& Data)
+{
+    auto& D       = m_LIS3.data;
+    Data.Magnetic = {.X = D.magneticX, .Y = D.magneticY, .Z = D.magneticZ};
 
     return true;
 }

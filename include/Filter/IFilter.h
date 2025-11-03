@@ -1,6 +1,6 @@
 #pragma once
 
-#include "SensorInterface.h"
+#include "SensorData.h"
 
 namespace Filter
 {

@@ -1,19 +1,30 @@
 #pragma once
 
 #include <cstddef>
+
+#include "Watchdog_t4.h"
 #include "ArduinoEigen.h"
-#include "SensorInterface.h"
+
+#include "SensorData.h"
+#include "Sensors/LSM6.h"
+#include "Sensors/BMP280.h"
+#include "Sensors/LIS3MDL.h"
 
 namespace ra::global
 {
+extern WDT_T4<WDT2> WatchDog;
 extern bool ParachuteDeployed;
-constexpr size_t SensorCount = 10;
 
-extern bool Sleep;
-} // namespace ra::global
+// Sensor list
+extern LIS3MDL Magnetometer;
+extern BMP280 Barometer;
+extern LSM6 AccelGyro;
+
+// Ticks
+hal::Tick::TickPoint GetSysTick();
 
 // "ground truth" calibration values
-namespace ra::global::calibration
+namespace calibration
 {
 struct GroundNormalData
 {
@@ -21,6 +32,6 @@ struct GroundNormalData
     float Magnitude;
 };
 extern GroundNormalData GroundNormal;
-
 extern SensorData SensorData;
-} // namespace ra::global::calibration
+} // namespace calibration
+} // namespace ra::global

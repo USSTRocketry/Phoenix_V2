@@ -1,32 +1,23 @@
 #include <Arduino.h>
+
 #include "Watchdog_t4.h"
-
 #include "Global.h"
-#include "States.h"
 #include "StateMachine.h"
-
 #include "SensorAggregator.h"
-#include "Sensors/LSM6.h"
-#include "Sensors/BMP280.h"
-#include "Sensors/LIS3MDL.h"
-
 #include "Filter/LowPass.h"
-
 #include "Log/DataStorage.h"
-
-WDT_T4<WDT2> WatchDog;
 
 StateMachine SM;
 Filter::LowPass LowPassFilter {0.6};
+ra::SensorAggregator<SensorData> SensorAccumulator {
+    &ra::global::Magnetometer, &ra::global::Barometer, &ra::global::AccelGyro};
 
-// Sensor list
-ra::LIS3MDL Magnetometer(0x1E, I2C_WIRE0);
-ra::BMP280 Barometer {};
-ra::LSM6 AccelGyro(0x6B, I2C_WIRE0);
-SensorAggregator<SensorData> SensorAccumulator {&Magnetometer, &Barometer, &AccelGyro};
+static constexpr auto SystemTickId = 1;
+ra::hal::Tick SystemTick {SystemTickId};
+static ra::hal::Tick::TickPoint MainTick {ra::hal::Tick::Invalid()};
+ra::hal::Tick::TickPoint ra::global::GetSysTick() { return MainTick; }
 
-void Entry();
-void Execute();
+static void Run();
 
 void WatchDogInterrupt()
 {
@@ -37,20 +28,14 @@ void WatchDogInterrupt()
         // wait for parachute deployment
         SM.EnterState<InFlight>(LowPassFilter.History().BMP280.Altitude);
     }
-
-    // soft reset
-    while (true)
-    {
-        Entry();
-    }
 }
 
 void setup()
 {
-    Serial.begin(115200);
+    using namespace ra::global;
 
-    // soft reset(sec), hard reset(sec), pin, fn_ptr for soft reset
-    WatchDog.begin({.trigger = 10.0, .timeout = 20.0, .pin = 13, .callback = WatchDogInterrupt});
+    Serial.begin(115200);
+    InitDataStorage();
 
     // initialize all sensors
     SensorAccumulator.Apply([](auto* Sensor) { Sensor->Init(); });
@@ -63,8 +48,6 @@ void setup()
 
         for (auto i = 0; i < CalibrateIteration; i++)
         {
-            WatchDog.feed();
-
             auto [Result, Data] = SensorAccumulator.Collect();
             if (!Result)
             {
@@ -80,25 +63,23 @@ void setup()
             assert(false);
         }
 
-        ra::global::calibration::SensorData   = LowPassFilter.History();
-        float AccelMag                        = ra::global::calibration::SensorData.AccelGyroData.Accel.norm();
-        ra::global::calibration::GroundNormal = {ra::global::calibration::SensorData.AccelGyroData.Accel / AccelMag,
-                                                 AccelMag};
+        calibration::SensorData   = LowPassFilter.History();
+        const float AccelMag      = calibration::SensorData.AccelGyroData.Accel.norm();
+        calibration::GroundNormal = {calibration::SensorData.AccelGyroData.Accel / AccelMag, AccelMag};
     }
-
     StoreStringLine("FC Start");
+
+    // soft reset(sec), hard reset(sec), pin, fn_ptr for soft reset
+    ra::global::WatchDog.begin({.trigger = 10.0, .timeout = 20.0, .pin = 13, .callback = WatchDogInterrupt});
 }
 
-void loop() { Entry(); }
+void loop() { Run(); }
 
-void Entry()
+void Run()
 {
-    WatchDog.feed();
-    if (!ra::global::Sleep) { Execute(); }
-}
+    SystemTick.Advance();
+    ra::global::WatchDog.feed();
 
-void Execute()
-{
     auto [Result, Data] = SensorAccumulator.Collect();
     if (!Result) { StoreStringLine("data collection failed"); }
 

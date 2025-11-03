@@ -1,62 +1,63 @@
 #pragma once
 
-#include "ArduinoEigen.h"
+#include <cassert>
+#include "Avionics_HAL.h"
 
-struct SensorData
+namespace ra
 {
-    Eigen::Vector3f Magnetic {Eigen::Vector3f::Zero()};
-
-    struct BMP280
-    {
-        float Temperature;
-        float Pressure;
-        float Altitude;
-    } BMP280 {};
-
-    struct AccelGyroData
-    {
-        float Temperature;
-        Eigen::Vector3f Accel {Eigen::Vector3f::Zero()};
-        Eigen::Vector3f Gyro {Eigen::Vector3f::Zero()};
-    } AccelGyroData {};
-
-public:
-    SensorData operator*(float Factor) const
-    {
-        return {
-            .Magnetic = Magnetic * Factor,
-
-            .BMP280 {BMP280.Temperature * Factor,     BMP280.Pressure * Factor,    BMP280.Altitude * Factor                     },
-
-            .AccelGyroData {
-                     AccelGyroData.Temperature * Factor, AccelGyroData.Accel * Factor, AccelGyroData.Gyro * Factor}
-        };
-    }
-
-    SensorData operator+(const SensorData& Other) const
-    {
-        return {
-            .Magnetic = Magnetic + Other.Magnetic,
-
-            .BMP280 {              BMP280.Temperature + Other.BMP280.Temperature,
-                     BMP280.Pressure + Other.BMP280.Pressure,
-                     BMP280.Altitude + Other.BMP280.Altitude      },
-
-            .AccelGyroData {AccelGyroData.Temperature + Other.AccelGyroData.Temperature,
-                     AccelGyroData.Accel + Other.AccelGyroData.Accel,
-                     AccelGyroData.Gyro + Other.AccelGyroData.Gyro}
-        };
-    }
-};
-
-// sensor interface
 template <typename SensorDataType>
 class ISensor
 {
 public:
-    // places the data into the param
-    // true if successfully read and placed
-    virtual bool Init() { return false; }
-    virtual bool CollectData(SensorDataType&) = 0;
-    virtual bool Destroy() { return false; }
+    ISensor() {}
+    virtual ~ISensor() = default;
+
+public:
+    virtual bool Init()                            = 0;
+    virtual bool CollectData(SensorDataType& Data) = 0;
+    virtual bool Deinit()                          = 0;
+
+protected:
+    virtual bool OnCollectData(SensorDataType&) = 0;
 };
+
+template <typename SensorDataType>
+class ITickedSensor : public ISensor<SensorDataType>
+{
+    using TickPoint = hal::Tick::TickPoint;
+
+public:
+    // Collects data once per tick
+    bool CollectData(SensorDataType& Data) override
+    {
+        const auto CurrentTick = m_TickProvider();
+
+        if (CurrentTick.Compare(m_LastTick) == TickPoint::CompareStatus::Equal) { return History(Data); }
+
+        if (OnCollectData(Data))
+        {
+            m_LastTick = CurrentTick;
+            return true;
+        }
+        return false;
+    }
+
+public:
+    using TickProvider = TickPoint (*)();
+
+    explicit ITickedSensor(TickProvider Provider) : m_TickProvider(Provider), m_LastTick(hal::Tick::Invalid())
+    {
+        assert(nullptr != Provider);
+    }
+
+    virtual ~ITickedSensor() = default;
+
+protected:
+    virtual bool OnCollectData(SensorDataType&) = 0;
+    virtual bool History(SensorDataType&)       = 0;
+
+protected:
+    TickProvider m_TickProvider;
+    TickPoint m_LastTick;
+};
+} // namespace ra

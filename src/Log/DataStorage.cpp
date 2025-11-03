@@ -10,13 +10,15 @@
  */
 
 // #include <Arduino.h>
-#include "Log/DataStorage.h"
-#include "SensorInterface.h"
 #include <string>
 
 #include <SerialFlash.h>
 #include <SD.h>
 #include <SPI.h>
+
+#include "Log/DataStorage.h"
+#include "SensorData.h"
+#include "Avionics_HAL.h"
 
 const int SDchipSelect    = 4; // Audio Shield has SD card CS on pin 10
 const int FlashChipSelect = 6; // digital pin for flash chip CS pin
@@ -45,7 +47,8 @@ void InitSdCard()
 
 void InitDataStorage()
 {
-    Serial.printf("InitDataStorage()");
+    InitSdCard();
+    // Serial.printf("InitDataStorage()");
     StoreStringLine(
         "State,Altitude,Pressure,Temperature,Acceleration_X,Acceleration_Y,Acceleration_Z,gyroX,gyroY,gyroZ,\
     magneticX,magneticY,magneticX,Timestamp");
@@ -97,7 +100,7 @@ std::string ConvertDataToCSVRow(FlightState State, const SensorData& SensorData)
            std::to_string(SensorData.Magnetic.x()) + "," + std::to_string(SensorData.Magnetic.y()) + "," +
            std::to_string(SensorData.Magnetic.z()) + "," +
 
-           std::to_string(millis()) + "\n";
+           std::to_string(ra::hal::SysUptimeMs()) + "\n";
 }
 
 void StoreData(FlightState S, const SensorData& SensorData) { StoreStringLine(ConvertDataToCSVRow(S, SensorData)); }

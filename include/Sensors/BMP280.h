@@ -1,19 +1,29 @@
 #pragma once
 
 #include <cstdint>
-#include "SensorDef.h"
+#include "Avionics_HAL.h"
 #include "SensorInterface.h"
+#include "SensorData.h"
 
 namespace ra
 {
-class BMP280 : public ISensor<SensorData>
+class BMP280 final : public ITickedSensor<SensorData>
 {
-public:
-    bool Init() override;
-    bool CollectData(SensorData&) override;
+    using ParentClass = ITickedSensor<SensorData>;
 
 public:
-    CtorWrapper(BMP280, m_BMP);
+    bool Init() override;
+    bool Deinit() override { return true; }
+
+public:
+    explicit BMP280(ParentClass::TickProvider TP, auto&&... Args) :
+        ParentClass(TP), m_BMP(std::forward<decltype(Args)>(Args)...)
+    {
+    }
+
+protected:
+    bool OnCollectData(SensorData&) override;
+    bool History(SensorData&) override;
 
 private:
     SensorBMP280 m_BMP;

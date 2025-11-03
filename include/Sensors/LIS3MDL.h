@@ -1,19 +1,29 @@
 #pragma once
 
 #include <cstdint>
-#include "SensorDef.h"
+#include "Avionics_HAL.h"
 #include "SensorInterface.h"
+#include "SensorData.h"
 
 namespace ra
 {
-class LIS3MDL : public ISensor<SensorData>
+class LIS3MDL final : public ITickedSensor<SensorData>
 {
-public:
-    bool Init() override;
-    bool CollectData(SensorData&) override;
+    using ParentClass = ITickedSensor<SensorData>;
 
 public:
-    CtorWrapper(LIS3MDL, m_LIS3);
+    bool Init() override;
+    bool Deinit() override { return true; }
+
+public:
+    explicit LIS3MDL(ParentClass::TickProvider TP, auto&&... Args) :
+        ParentClass(TP), m_LIS3(std::forward<decltype(Args)>(Args)...)
+    {
+    }
+
+protected:
+    bool OnCollectData(SensorData&) override;
+    bool History(SensorData&) override;
 
 private:
     SensorMagnetometer m_LIS3;

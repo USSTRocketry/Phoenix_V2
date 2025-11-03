@@ -1,8 +1,9 @@
 #pragma once
 
-#include "SensorInterface.h"
 #include <variant>
 #include <cstdint>
+
+#include "SensorData.h"
 
 using FlightStateMemPool = std::variant<class Unarmed, class GroundIdle, class InFlight, class MainChute>;
 

@@ -4,8 +4,8 @@
 .vscode/
 .cache/
 compile_commands.json
-
 cmake-build-debug/
+
 # Prerequisites
 *.d
 
@@ -39,7 +39,5 @@ cmake-build-debug/
 *.out
 *.app
 
-# editor
-.vscode
-
-.idea
+# compiler map file
+*.map

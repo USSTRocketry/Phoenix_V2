@@ -12,9 +12,15 @@ FlightState MainChute::Run(const SensorData& SensorData, FlightStateMemPool&)
     if (Diff < Epsilon)
     {
         m_SteadyCounter++;
-        if (m_SteadyCounter > MaxSteadyCount) { ra::global::Sleep = true; }
+        if (m_SteadyCounter > MaxSteadyCount)
+        {
+            // teensy uses arm so this is fine for now ...
+            asm("wfi");
+        }
     }
-    else { m_SteadyCounter = 0; }
+    else {
+        m_SteadyCounter = 0;
+    }
     return GetState();
 }
 
