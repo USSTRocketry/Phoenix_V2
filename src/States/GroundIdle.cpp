@@ -6,7 +6,7 @@ FlightState GroundIdle::Run(const SensorData& SensorData, FlightStateMemPool& Me
     using namespace ra::global;
 
     constexpr auto Delta          = 2;
-    float GroundRelativeMagnitude = calibration::GroundNormal.Direction.dot(SensorData.AccelGyroData.Accel);
+    float GroundRelativeMagnitude = calibration::GroundNormal.Direction.dot(SensorData.AccelGyro.Accel);
     float LaunchMagRatio          = GroundRelativeMagnitude / calibration::GroundNormal.Magnitude;
 
     if (LaunchMagRatio > Delta)

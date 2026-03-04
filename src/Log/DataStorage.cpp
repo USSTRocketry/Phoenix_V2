@@ -90,12 +90,11 @@ std::string ConvertDataToCSVRow(FlightState State, const SensorData& SensorData)
            std::to_string(SensorData.BMP280.Altitude) + "," + std::to_string(SensorData.BMP280.Pressure) + "," +
            std::to_string(SensorData.BMP280.Temperature) + "," +
 
-           std::to_string(SensorData.AccelGyroData.Accel.x()) + "," +
-           std::to_string(SensorData.AccelGyroData.Accel.y()) + "," +
-           std::to_string(SensorData.AccelGyroData.Accel.z()) + "," +
+           std::to_string(SensorData.AccelGyro.Accel.x()) + "," + std::to_string(SensorData.AccelGyro.Accel.y()) + "," +
+           std::to_string(SensorData.AccelGyro.Accel.z()) + "," +
 
-           std::to_string(SensorData.AccelGyroData.Gyro.x()) + "," + std::to_string(SensorData.AccelGyroData.Gyro.z()) +
-           "," + std::to_string(SensorData.AccelGyroData.Gyro.z()) + "," +
+           std::to_string(SensorData.AccelGyro.Gyro.x()) + "," + std::to_string(SensorData.AccelGyro.Gyro.y()) + "," +
+           std::to_string(SensorData.AccelGyro.Gyro.z()) + "," +
 
            std::to_string(SensorData.Magnetic.x()) + "," + std::to_string(SensorData.Magnetic.y()) + "," +
            std::to_string(SensorData.Magnetic.z()) + "," +

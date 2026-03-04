@@ -6,8 +6,8 @@ FlightState MainChute::Run(const SensorData& SensorData, FlightStateMemPool&)
     constexpr auto Epsilon        = 10;
     constexpr auto MaxSteadyCount = 50;
     // consider using BMP altitude
-    auto Norm                     = SensorData.AccelGyroData.Accel.norm();
-    auto Diff                     = abs(ra::global::calibration::SensorData.AccelGyroData.Accel.norm() - Norm);
+    auto Norm                     = SensorData.AccelGyro.Accel.norm();
+    auto Diff                     = abs(ra::global::calibration::SensorData.AccelGyro.Accel.norm() - Norm);
 
     if (Diff < Epsilon)
     {
@@ -18,7 +18,8 @@ FlightState MainChute::Run(const SensorData& SensorData, FlightStateMemPool&)
             asm("wfi");
         }
     }
-    else {
+    else
+    {
         m_SteadyCounter = 0;
     }
     return GetState();

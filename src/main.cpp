@@ -34,6 +34,10 @@ void setup()
 {
     using namespace ra::global;
 
+    auto abc = 3ull;
+
+    char c = abc;
+
     Serial.begin(115200);
     InitDataStorage();
 
@@ -64,8 +68,8 @@ void setup()
         }
 
         calibration::SensorData   = LowPassFilter.History();
-        const float AccelMag      = calibration::SensorData.AccelGyroData.Accel.norm();
-        calibration::GroundNormal = {calibration::SensorData.AccelGyroData.Accel / AccelMag, AccelMag};
+        const float AccelMag      = calibration::SensorData.AccelGyro.Accel.norm();
+        calibration::GroundNormal = {calibration::SensorData.AccelGyro.Accel / AccelMag, AccelMag};
     }
     StoreStringLine("FC Start");
 

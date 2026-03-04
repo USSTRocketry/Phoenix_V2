@@ -2,23 +2,21 @@
 
 namespace ra
 {
-bool LIS3MDL::Init() { return m_LIS3.begin(); }
+bool LIS3MDL::Init() { return m_LIS3.begin() == HAL::SensorStatus::Success; }
 
 bool LIS3MDL::OnCollectData(SensorData& Data)
 {
-    MagnetometerData* D = m_LIS3.read();
-    if (!D) { return false; }
+    const HAL::MagnetometerData& D = m_LIS3.read();
 
-    Data.Magnetic = {.X = D->magneticX, .Y = D->magneticY, .Z = D->magneticZ};
+    m_History     = {.X = D.magneticX, .Y = D.magneticY, .Z = D.magneticZ};
+    Data.Magnetic = m_History;
 
     return true;
 }
 
 bool LIS3MDL::History(SensorData& Data)
 {
-    auto& D       = m_LIS3.data;
-    Data.Magnetic = {.X = D.magneticX, .Y = D.magneticY, .Z = D.magneticZ};
-
+    Data.Magnetic = m_History;
     return true;
 }
 } // namespace ra

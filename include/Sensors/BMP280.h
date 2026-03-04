@@ -10,6 +10,7 @@ namespace ra
 class BMP280 final : public ITickedSensor<SensorData>
 {
     using ParentClass = ITickedSensor<SensorData>;
+    SensorData::BMP280Data m_History;
 
 public:
     bool Init() override;
@@ -26,6 +27,6 @@ protected:
     bool History(SensorData&) override;
 
 private:
-    SensorBMP280 m_BMP;
+    HAL::Bmp280Sensor m_BMP;
 };
 } // namespace ra

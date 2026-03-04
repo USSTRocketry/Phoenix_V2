@@ -10,6 +10,7 @@ namespace ra
 class LSM6 final : public ITickedSensor<SensorData>
 {
     using ParentClass = ITickedSensor<SensorData>;
+    SensorData::AccelGyroData m_History;
 
 public:
     bool Init() override;
@@ -26,6 +27,6 @@ protected:
     bool History(SensorData&) override;
 
 private:
-    SensorAccelGyro m_LSM6;
+    HAL::AccelGyroSensor m_LSM6;
 };
 } // namespace ra

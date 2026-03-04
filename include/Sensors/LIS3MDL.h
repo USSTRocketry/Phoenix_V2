@@ -10,6 +10,7 @@ namespace ra
 class LIS3MDL final : public ITickedSensor<SensorData>
 {
     using ParentClass = ITickedSensor<SensorData>;
+    SensorData::MagnetometerData m_History;
 
 public:
     bool Init() override;
@@ -26,6 +27,6 @@ protected:
     bool History(SensorData&) override;
 
 private:
-    SensorMagnetometer m_LIS3;
+    HAL::MagnetometerSensor m_LIS3;
 };
 } // namespace ra

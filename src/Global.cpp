@@ -1,4 +1,5 @@
 #include "Global.h"
+#include <PINS.h>
 
 namespace ra::global
 {
@@ -8,9 +9,9 @@ WDT_T4<WDT2> WatchDog;
 bool ParachuteDeployed {false};
 
 // ==== Sensors ====
-LIS3MDL Magnetometer(GetSysTick, 0x1E, I2C_WIRE0);
-BMP280 Barometer {GetSysTick};
-LSM6 AccelGyro(GetSysTick, 0x6B, I2C_WIRE0);
+LIS3MDL Magnetometer(GetSysTick, 0x1E, HAL::I2C_WIRE);
+BMP280 Barometer {GetSysTick, 0, HAL::I2C_WIRE};
+LSM6 AccelGyro(GetSysTick, 0x6B, HAL::I2C_WIRE);
 } // namespace ra::global
 
 namespace ra::global::calibration

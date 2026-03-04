@@ -4,9 +4,10 @@
 
 struct SensorData
 {
-    Eigen::Vector3f Magnetic {Eigen::Vector3f::Zero()};
+    using MagnetometerData = Eigen::Vector3f;
+    MagnetometerData Magnetic {Eigen::Vector3f::Zero()};
 
-    struct BMP280
+    struct BMP280Data
     {
         float Temperature;
         float Pressure;
@@ -18,7 +19,7 @@ struct SensorData
         float Temperature;
         Eigen::Vector3f Accel {Eigen::Vector3f::Zero()};
         Eigen::Vector3f Gyro {Eigen::Vector3f::Zero()};
-    } AccelGyroData {};
+    } AccelGyro {};
 
 public:
     SensorData operator*(float Factor) const
@@ -26,10 +27,9 @@ public:
         return {
             .Magnetic = Magnetic * Factor,
 
-            .BMP280 {BMP280.Temperature * Factor,     BMP280.Pressure * Factor,    BMP280.Altitude * Factor                     },
+            .BMP280 {   BMP280.Temperature * Factor, BMP280.Pressure * Factor, BMP280.Altitude * Factor},
 
-            .AccelGyroData {
-                     AccelGyroData.Temperature * Factor, AccelGyroData.Accel * Factor, AccelGyroData.Gyro * Factor}
+            .AccelGyro {AccelGyro.Temperature * Factor, AccelGyro.Accel * Factor,  AccelGyro.Gyro * Factor}
         };
     }
 
@@ -38,13 +38,13 @@ public:
         return {
             .Magnetic = Magnetic + Other.Magnetic,
 
-            .BMP280 {              BMP280.Temperature + Other.BMP280.Temperature,
+            .BMP280 {      BMP280.Temperature + Other.BMP280.Temperature,
                      BMP280.Pressure + Other.BMP280.Pressure,
-                     BMP280.Altitude + Other.BMP280.Altitude      },
+                     BMP280.Altitude + Other.BMP280.Altitude},
 
-            .AccelGyroData {AccelGyroData.Temperature + Other.AccelGyroData.Temperature,
-                     AccelGyroData.Accel + Other.AccelGyroData.Accel,
-                     AccelGyroData.Gyro + Other.AccelGyroData.Gyro}
+            .AccelGyro {AccelGyro.Temperature + Other.AccelGyro.Temperature,
+                     AccelGyro.Accel + Other.AccelGyro.Accel,
+                     AccelGyro.Gyro + Other.AccelGyro.Gyro  }
         };
     }
 };
