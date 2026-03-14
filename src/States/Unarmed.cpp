@@ -1,9 +1,9 @@
 #include "States.h"
 #include "Util.h"
 
-FlightState Unarmed::Run(const SensorData& SensorData, FlightStateMemPool& MemPool)
+FlightState Unarmed::Run(const StateContext& Context, FlightStateMemPool& MemPool)
 {
-    UnUsed(SensorData);
+    UnUsed(Context);
 
     // TODO: be able to receive arming signal
     if (true)

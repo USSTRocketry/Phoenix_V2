@@ -1,11 +1,11 @@
 #include "States.h"
 #include "Global.h"
 
-FlightState InFlight::Run(const SensorData& SensorData, FlightStateMemPool& MemPool)
+FlightState InFlight::Run(const StateContext& Context, FlightStateMemPool& MemPool)
 {
     constexpr uint32_t MinApogeeCount = 20;
     constexpr auto Epsilon            = 2;
-    const auto& CurrentAlt            = SensorData.BMP280.Altitude;
+    const auto& CurrentAlt            = Context.Sensors.BMP280.Altitude;
 
     if (CurrentAlt > m_Apogee)
     {

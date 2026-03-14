@@ -2,6 +2,7 @@
 
 #include <cstddef>
 
+#include "Log.h"
 #include "Watchdog_t4.h"
 #include "ArduinoEigen.h"
 
@@ -10,10 +11,11 @@
 #include "Sensors/BMP280.h"
 #include "Sensors/LIS3MDL.h"
 
+#include "Avionics_HAL.h"
+
 namespace ra::global
 {
 extern WDT_T4<WDT2> WatchDog;
-extern bool ParachuteDeployed;
 
 // Sensor list
 extern LIS3MDL Magnetometer;
@@ -22,6 +24,11 @@ extern LSM6 AccelGyro;
 
 // Ticks
 hal::Tick::TickPoint GetSysTick();
+
+extern ra::Logger& Logger;
+
+// Workqueue
+extern hal::WorkQueue MainQueue;
 
 // "ground truth" calibration values
 namespace calibration

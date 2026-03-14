@@ -12,7 +12,7 @@ public:
      * Performs state action
      * @return The current state
      */
-    FlightState Run(const SensorData&);
+    FlightState Run(const StateContext&);
 
     FlightState GetState() const;
 
