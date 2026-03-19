@@ -26,32 +26,32 @@ const int FlashChipSelect = 6; // digital pin for flash chip CS pin
 
 void InitSdCard()
 {
-    if (!SD.begin(SDchipSelect))
+    if (!SD.begin(SDchipSelect)) { Serial.println("Unable to access SD card"); }
+
+    // Create/open the binary log file on the SD card.
+    // Use the correct flags (bitwise OR) so the file is created if missing.
+    if(SD.exists("/FlightData.bin")) { SD.remove("/FlightData.bin"); }
+    File F = SD.open("/FlightData.bin", O_CREAT | O_WRITE);
+    if (F) { F.close(); }
+    else
     {
-        // error("Unable to access SD card");
+        Serial.println("Failed to create/open FlightData.bin on SD card");
     }
-    if (!SerialFlash.begin(FlashChipSelect))
-    {
-        // error("Unable to access SPI Flash chip");
-    }
-
-    if (SD.exists("/FlightData.fdat")) { SD.remove("/FlightData.fdat"); }
-
-    SerialFlash.create("/FlightData.fdat", sizeof("/FlightData.fdat"));
-    File file = SD.open("/FlightData.fdat", O_CREAT & O_WRITE);
-
-    file.write("BarVal,Thermoval,accel_x,accell_y,accell_z,Gyro_x,Gyro_y,Gyro_z,timestamp\n");
-
-    file.close();
 }
 
 void InitDataStorage()
 {
     InitSdCard();
-    // Serial.printf("InitDataStorage()");
-    StoreStringLine(
-        "State,Altitude,Pressure,Temperature,Acceleration_X,Acceleration_Y,Acceleration_Z,gyroX,gyroY,gyroZ,\
-    magneticX,magneticY,magneticX,Timestamp");
+    Serial.printf("InitDataStorage()");
+}
+
+void StoreBytes(char bytes[], int len)
+{
+    File file = SD.open("/FlightData.bin", O_APPEND);
+
+    file.write(bytes, len);
+
+    file.close();
 }
 
 void StoreStringLine(std::string s)

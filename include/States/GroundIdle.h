@@ -15,6 +15,6 @@ public:
     FlightState GetState() const override;
 
 public:
-    GroundIdle()           = default;
+    GroundIdle();
     ~GroundIdle() override = default;
 };

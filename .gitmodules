@@ -1,6 +1,6 @@
 [submodule "lib/Turtleford"]
 	path = lib/Turtleford
 	url = git@github.com:USSTRocketry/Turtleford.git
-[submodule "lib/Tisdale-proto-files"]
-	path = lib/Tisdale-proto-files
-	url = git@github.com:USSTRocketry/Tisdale-proto-files.git
+[submodule "lib/Tisdale"]
+	path = lib/Tisdale
+	url = git@github.com:USSTRocketry/Tisdale.git

@@ -1,5 +1,19 @@
 #include "States.h"
 #include "Global.h"
+#include "TypeConversion/TypeConversion.h"
+
+InFlight::InFlight(float CurrentAltitude)
+    : m_Apogee(CurrentAltitude)
+{
+    ra::Logger::LogInfo LogInfo{
+        .Timestamp = ra::global::GetSysTick().Raw(),
+        .Level     = ra::Logger::Severity::Info,
+        .Category  = ra::type::Category::FlightControl,
+    };
+
+    ra::type::FlightControlMsg Message { .State = ToFlightState(GetState()) };
+    ra::global::Logger.Log(LogInfo, Message);
+}
 
 FlightState InFlight::Run(const StateContext& Context, FlightStateMemPool& MemPool)
 {

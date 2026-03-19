@@ -1,5 +1,19 @@
 #include "States.h"
+#include "Global.h"
+#include "TypeConversion/TypeConversion.h"
 #include "Util.h"
+
+Unarmed::Unarmed()
+{
+    ra::Logger::LogInfo LogInfo{
+        .Timestamp = ra::global::GetSysTick().Raw(),
+        .Level     = ra::Logger::Severity::Info,
+        .Category  = ra::type::Category::FlightControl,
+    };
+
+    ra::type::FlightControlMsg Message { .State = ToFlightState(GetState()) };
+    ra::global::Logger.Log(LogInfo, Message);
+}
 
 FlightState Unarmed::Run(const StateContext& Context, FlightStateMemPool& MemPool)
 {

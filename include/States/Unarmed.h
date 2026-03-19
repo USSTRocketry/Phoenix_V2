@@ -16,6 +16,6 @@ public:
     FlightState GetState() const override;
 
 public:
-    Unarmed()           = default;
+    Unarmed();
     ~Unarmed() override = default;
 };
