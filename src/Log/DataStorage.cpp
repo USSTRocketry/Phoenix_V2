@@ -24,43 +24,62 @@ const int SDchipSelect    = 4; // Audio Shield has SD card CS on pin 10
 const int FlashChipSelect = 6; // digital pin for flash chip CS pin
 // const int FlashChipSelect = 21; // Arduino 101 built-in SPI Flash
 
+bool IsSdCardReady = false;
+
 void InitSdCard()
 {
-    if (!SD.begin(SDchipSelect)) { Serial.println("Unable to access SD card"); }
-
-    // Create/open the binary log file on the SD card.
-    // Use the correct flags (bitwise OR) so the file is created if missing.
-    if(SD.exists("/FlightData.bin")) { SD.remove("/FlightData.bin"); }
-    File F = SD.open("/FlightData.bin", O_CREAT | O_WRITE);
-    if (F) { F.close(); }
+    if (SD.begin(SDchipSelect))
+    {
+        IsSdCardReady = true;
+    }
     else
     {
-        Serial.println("Failed to create/open FlightData.bin on SD card");
+        Serial.println("Unable to access SD card - logging to SD will be disabled");
+    }
+
+    if (IsSdCardReady)
+    {
+        // Create/open the binary log file on the SD card.
+        // Use the correct flags (bitwise OR) so the file is created if missing.
+        if (SD.exists("/FlightData.bin")) { SD.remove("/FlightData.bin"); }
+        File F = SD.open("/FlightData.bin", O_CREAT | O_WRITE);
+        if (F) { F.close(); }
+        else
+        {
+            Serial.println("Failed to create/open FlightData.bin on SD card");
+            IsSdCardReady = false;
+        }
     }
 }
 
 void InitDataStorage()
 {
     InitSdCard();
-    Serial.printf("InitDataStorage()");
+    Serial.printf("InitDataStorage()\n");
 }
 
 void StoreBytes(char bytes[], int len)
 {
+    if (!IsSdCardReady) return;
+
     File file = SD.open("/FlightData.bin", O_APPEND);
-
-    file.write(bytes, len);
-
-    file.close();
+    if (file)
+    {
+        file.write(bytes, len);
+        file.close();
+    }
 }
 
 void StoreStringLine(std::string s)
 {
+    if (!IsSdCardReady) return;
+
     File file = SD.open("/FlightData.fdat", O_APPEND);
-
-    file.write(s.c_str());
-
-    file.close();
+    if (file)
+    {
+        file.write(s.c_str());
+        file.close();
+    }
 }
 
 void TransferFileData(File to)

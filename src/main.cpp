@@ -19,6 +19,8 @@ namespace global = ra::global;
 
 namespace
 {
+HAL::RFM95Radio Radio(HAL::RADIO_CS, HAL::RADIO_INT, HAL::RADIO_SPI, 433.0);
+
 constexpr auto SystemTickId          = 1;
 constexpr auto LowPassFactor         = 0.6f;
 constexpr auto CalibrationIterations = 50;
@@ -55,49 +57,65 @@ uint32_t WriteBytes(std::span<const std::byte> Data, void*)
 {
     StoreBytes(const_cast<char*>(reinterpret_cast<const char*>(Data.data())), Data.size_bytes());
 
-    const auto LogMsg = ra::turtleford::ProtoDecode_LogMessage(Data);
-    if (!LogMsg.has_value())
+    std::span<const std::byte> remaining = Data;
+    while (!remaining.empty())
     {
-        Serial.println("log message decode failed");
-        return Data.size();
-    }
-
-    const Proto_LogMessage DecodedMsg = LogMsg.value();
-
-    Serial.printf("Timestamp : %f\n", static_cast<double>(DecodedMsg.main_message.timestamp));
-
-    switch (DecodedMsg.main_message.which_message_type)
-    {
-        case Proto_MainMessage_debug_msg_tag:
+        auto FrameOpt = ra::turtleford::ProtoFrame_Read(remaining);
+        if (!FrameOpt.has_value())
         {
-            const auto Msg = std::unique_ptr<std::string>(
-                static_cast<std::string*>(DecodedMsg.main_message.message_type.debug_msg.msg.arg));
-
-            Serial.println(Msg->c_str());
+            Serial.println("log message frame decode failed");
             break;
         }
-        case Proto_MainMessage_in_flight_data_tag:
+
+        const auto& Frame = FrameOpt.value();
+        const auto LogMsgOpt = ra::turtleford::ProtoDecode_LogMessage(Frame.Payload, ra::turtleford::ProtoFlags::None);
+        if (!LogMsgOpt.has_value())
         {
-            const auto Msg = DecodedMsg.main_message.message_type.in_flight_data;
-
-            const auto PrintVec3 = [](const Proto_InFlightData_VectorF& V)
-            { Serial.printf("X %f, Y %f, Z %f\n", static_cast<double>(V.X), static_cast<double>(V.Y), static_cast<double>(V.Z)); };
-
-            Serial.printf("timestamp %u,\n", MainTick.Raw());
-            Serial.printf("\tBMP : temp %f, pressure %f, alt %f\n",
-                          static_cast<double>(Msg.bmp_data.temperature),
-                          static_cast<double>(Msg.bmp_data.pressure),
-                          static_cast<double>(Msg.bmp_data.altitude));
-            Serial.printf("accel gyro temp %f,\n", static_cast<double>(Msg.accel_gyro_temperature));
-            Serial.printf("\tAccel : ");
-            PrintVec3(Msg.accel);
-            Serial.printf("\tGryo : ");
-            PrintVec3(Msg.gyro);
-            Serial.printf("\tMag : ");
-            PrintVec3(Msg.magnetometer);
-            Serial.printf("thermo %f,\n", static_cast<double>(Msg.thermometer));
-            break;
+            Serial.println("log message payload decode failed");
+            remaining = remaining.subspan(Frame.BytesConsumed);
+            continue;
         }
+
+        const Proto_LogMessage& DecodedMsg = LogMsgOpt.value();
+
+        Serial.printf("Timestamp : %f\n", static_cast<double>(DecodedMsg.main_message.timestamp));
+
+        switch (DecodedMsg.main_message.which_message_type)
+        {
+            case Proto_MainMessage_debug_msg_tag:
+            {
+                const auto Msg = std::unique_ptr<std::string>(
+                    static_cast<std::string*>(DecodedMsg.main_message.message_type.debug_msg.msg.arg));
+
+                Serial.println(Msg->c_str());
+                break;
+            }
+            case Proto_MainMessage_in_flight_data_tag:
+            {
+                // Re-serialize as raw Proto_MainMessage (without the LogMessage outer wrapper) and send over RFM95
+                static uint32_t LastRadioSend = 0;
+                uint32_t Now = millis();
+                if (Now - LastRadioSend >= 400) // 400ms throttle to prevent clogging the radio
+                {
+                    LastRadioSend = Now;
+                    static std::array<std::byte, 128> radioBuffer;
+                    size_t written = ra::turtleford::ProtoEncode(
+                        DecodedMsg.main_message.timestamp,
+                        DecodedMsg.main_message,
+                        radioBuffer,
+                        ra::turtleford::ProtoFlags::None
+                    );
+                    if (written > 0)
+                    {
+                        bool sent = Radio.send(std::span<const uint8_t>(reinterpret_cast<const uint8_t*>(radioBuffer.data()), written));
+                        Serial.printf("Radio.send called! Bytes: %d, success: %d\n", (int)written, sent);
+                    }
+                }
+                break;
+            }
+        }
+
+        remaining = remaining.subspan(Frame.BytesConsumed);
     }
 
     return Data.size();
@@ -144,7 +162,10 @@ void CalibrateSensors()
 
 void StartFlightControl()
 {
+    Serial.println("Initializing MainQueue...");
     auto Status = global::MainQueue.Init();
+    Serial.printf("MainQueue Init status: %d\n", static_cast<int>(Status));
+
     hal::WorkQueue::SubmitOptions FlightControl {
         .Exec =
             {
@@ -155,7 +176,9 @@ void StartFlightControl()
         .Sched = {.DelayMs = TickFrequencyMs, .Iterations = hal::WorkQueue::Scheduling::IterationInfinite}
     };
 
+    Serial.println("Submitting FlightProcess to MainQueue...");
     std::tie(Status, FlightControlHandle) = global::MainQueue.Submit(FlightControl);
+    Serial.printf("MainQueue Submit status: %d\n", static_cast<int>(Status));
 }
 
 void WatchDogInterrupt()
@@ -191,23 +214,40 @@ static ra::type::FlightData SensorDataToFlightData(const SensorData& SensorData)
 
 void FlightProcess(hal::WorkQueue::WorkHandle&)
 {
+    Serial.println("--- FlightProcess Tick Start ---");
     MainTick            = SystemTick.Advance();
+    Serial.println("Tick advanced");
     auto [Result, Data] = SensorAccumulator.Collect();
+    Serial.printf("Sensors collected, Result: %d\n", Result);
     if (!Result)
     {
+        Serial.println("Warning: Sensor collection failed!");
         LogApp(1, "data collection failed", ra::Logger::Severity::Warn);
     }
 
+    Serial.println("Filtering data...");
     auto Filtered = LowPassFilter.Filter(Data);
+    Serial.println("Data filtered");
+
     const StateContext Ctx {.Sensors = Filtered, .FlightControlHandle = FlightControlHandle};
+    Serial.println("Running StateMachine...");
     SM.Run(Ctx);
+    Serial.println("StateMachine run complete");
 
     const ra::type::FlightData Fd = SensorDataToFlightData(Filtered);
     ra::Logger::LogInfo dataInfo = DefaultLogInfo;
     dataInfo.Timestamp = MainTick.Raw();
     dataInfo.Level     = ra::Logger::Severity::Verbose;
     dataInfo.Category  = ra::type::Category::Sensors;
+    Serial.println("Logging flight data...");
     ra::global::Logger.Log(dataInfo, Fd);
+    Serial.println("Flight data logged");
+
+    // Force flush the cached buffer to output the logged data immediately
+    Serial.println("Flushing logger...");
+    ra::global::Logger.Flush();
+    Serial.println("Logger flushed");
+    Serial.println("--- FlightProcess Tick End ---");
 }
 } // namespace
 
@@ -216,24 +256,68 @@ hal::Tick::TickPoint global::GetSysTick() { return SystemTick.Now(); }
 void setup()
 {
     Serial.begin(115200);
-    InitDataStorage();
+    while (!Serial && millis() < 4000)
+    {
+        // Wait up to 4 seconds for USB Serial Monitor to connect
+    }
+    Serial.println("--- Flight Computer Booting ---");
+    if (CrashReport)
+    {
+        Serial.print(CrashReport);
+    }
 
+    Serial.println("Initializing Data Storage...");
+    InitDataStorage();
+    Serial.println();
+
+    Serial.println("Registering Logger Callback...");
     global::Logger.RegisterCallback(WriteBytes, nullptr);
 
+    Serial.println("Initializing RFM95 Radio...");
+    // Initialize radio EN and reset
+    pinMode(HAL::RADIO_EN, OUTPUT);
+    digitalWrite(HAL::RADIO_EN, HIGH);
+    Radio.reset(HAL::RADIO_RST);
+    if (!Radio.begin())
+    {
+        Serial.println("RFM95 Radio init failed!");
+        LogApp(1, "RFM95 Radio init failed", ra::Logger::Severity::Error);
+    }
+    else
+    {
+        Serial.println("RFM95 Radio init OK.");
+        LogApp(0, "RFM95 Radio init OK", ra::Logger::Severity::Info);
+    }
+
+    Serial.println("Initializing Sensors...");
     InitializeSensors();
+
+    Serial.println("Calibrating Sensors (takes 10s)...");
     CalibrateSensors();
+    Serial.println("Calibration complete.");
 
     // soft reset(sec), hard reset(sec), pin, fn_ptr for soft reset
+    Serial.println("Starting Watchdog...");
     global::WatchDog.begin({.trigger = 10.0, .timeout = 20.0, .pin = 13, .callback = WatchDogInterrupt});
 
+    Serial.println("Starting Flight Control Queue...");
     StartFlightControl();
 
     LogApp(0, "FC Start", ra::Logger::Severity::Info);
+    Serial.println("--- Setup Complete, Entering Loop ---");
 }
 
 void loop()
 {
     global::WatchDog.feed();
+
+    static uint32_t LastLoopPrint = 0;
+    uint32_t Now = millis();
+    if (Now - LastLoopPrint >= 1000)
+    {
+        LastLoopPrint = Now;
+        Serial.println("Loop tick!");
+    }
 
 #if !(WORK_QUEUE_PREEMPTIVE)
     global::MainQueue.Run();
