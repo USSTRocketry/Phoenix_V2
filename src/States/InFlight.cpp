@@ -1,11 +1,25 @@
 #include "States.h"
 #include "Global.h"
+#include "TypeConversion/TypeConversion.h"
 
-FlightState InFlight::Run(const SensorData& SensorData, FlightStateMemPool& MemPool)
+InFlight::InFlight(float CurrentAltitude)
+    : m_Apogee(CurrentAltitude)
+{
+    ra::Logger::LogInfo LogInfo{
+        .Timestamp = ra::global::GetSysTick().Raw(),
+        .Level     = ra::Logger::Severity::Info,
+        .Category  = ra::type::Category::FlightControl,
+    };
+
+    ra::type::FlightControlMsg Message { .State = ToFlightState(GetState()) };
+    ra::global::Logger.Log(LogInfo, Message);
+}
+
+FlightState InFlight::Run(const StateContext& Context, FlightStateMemPool& MemPool)
 {
     constexpr uint32_t MinApogeeCount = 20;
     constexpr auto Epsilon            = 2;
-    const auto& CurrentAlt            = SensorData.BMP280.Altitude;
+    const auto& CurrentAlt            = Context.Sensors.BMP280.Altitude;
 
     if (CurrentAlt > m_Apogee)
     {

@@ -6,7 +6,7 @@ class Unarmed : public BaseState
 {
 public:
     // main
-    FlightState Run(const SensorData&, FlightStateMemPool&) override;
+    FlightState Run(const StateContext&, FlightStateMemPool&) override;
 
     /**
      * Finds the State of the current State
@@ -16,6 +16,6 @@ public:
     FlightState GetState() const override;
 
 public:
-    Unarmed()           = default;
+    Unarmed();
     ~Unarmed() override = default;
 };

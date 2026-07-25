@@ -5,7 +5,7 @@ class InFlight : public BaseState
 {
 public:
     // main
-    FlightState Run(const SensorData&, FlightStateMemPool&) override;
+    FlightState Run(const StateContext&, FlightStateMemPool&) override;
 
     /**
      * Finds the State of the current State
@@ -15,7 +15,7 @@ public:
     FlightState GetState() const override;
 
 public:
-    explicit InFlight(float CurrentAltitude) : m_Apogee(CurrentAltitude) {}
+    explicit InFlight(float CurrentAltitude);
     ~InFlight() override = default;
 
 private:

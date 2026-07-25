@@ -4,6 +4,7 @@
 #include <cstdint>
 
 #include "SensorData.h"
+#include "Avionics_HAL.h"
 
 using FlightStateMemPool = std::variant<class Unarmed, class GroundIdle, class InFlight, class MainChute>;
 
@@ -16,13 +17,19 @@ enum FlightState : uint8_t
     FlightState_MainChute
 };
 
+struct StateContext
+{
+    const SensorData& Sensors;
+    ra::hal::WorkQueue::WorkHandle FlightControlHandle;
+};
+
 struct BaseState
 {
     /**
      * Performs task
      * @return the current state
      */
-    virtual FlightState Run(const SensorData&, FlightStateMemPool&) = 0;
+    virtual FlightState Run(const StateContext&, FlightStateMemPool&) = 0;
 
     /**
      * Finds the State of the current State

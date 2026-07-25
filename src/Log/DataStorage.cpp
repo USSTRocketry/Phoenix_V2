@@ -24,43 +24,62 @@ const int SDchipSelect    = 4; // Audio Shield has SD card CS on pin 10
 const int FlashChipSelect = 6; // digital pin for flash chip CS pin
 // const int FlashChipSelect = 21; // Arduino 101 built-in SPI Flash
 
+bool IsSdCardReady = false;
+
 void InitSdCard()
 {
-    if (!SD.begin(SDchipSelect))
+    if (SD.begin(SDchipSelect))
     {
-        // error("Unable to access SD card");
+        IsSdCardReady = true;
     }
-    if (!SerialFlash.begin(FlashChipSelect))
+    else
     {
-        // error("Unable to access SPI Flash chip");
+        Serial.println("Unable to access SD card - logging to SD will be disabled");
     }
 
-    if (SD.exists("/FlightData.fdat")) { SD.remove("/FlightData.fdat"); }
-
-    SerialFlash.create("/FlightData.fdat", sizeof("/FlightData.fdat"));
-    File file = SD.open("/FlightData.fdat", O_CREAT & O_WRITE);
-
-    file.write("BarVal,Thermoval,accel_x,accell_y,accell_z,Gyro_x,Gyro_y,Gyro_z,timestamp\n");
-
-    file.close();
+    if (IsSdCardReady)
+    {
+        // Create/open the binary log file on the SD card.
+        // Use the correct flags (bitwise OR) so the file is created if missing.
+        if (SD.exists("/FlightData.bin")) { SD.remove("/FlightData.bin"); }
+        File F = SD.open("/FlightData.bin", O_CREAT | O_WRITE);
+        if (F) { F.close(); }
+        else
+        {
+            Serial.println("Failed to create/open FlightData.bin on SD card");
+            IsSdCardReady = false;
+        }
+    }
 }
 
 void InitDataStorage()
 {
     InitSdCard();
-    // Serial.printf("InitDataStorage()");
-    StoreStringLine(
-        "State,Altitude,Pressure,Temperature,Acceleration_X,Acceleration_Y,Acceleration_Z,gyroX,gyroY,gyroZ,\
-    magneticX,magneticY,magneticX,Timestamp");
+    Serial.printf("InitDataStorage()\n");
+}
+
+void StoreBytes(char bytes[], int len)
+{
+    if (!IsSdCardReady) return;
+
+    File file = SD.open("/FlightData.bin", O_APPEND);
+    if (file)
+    {
+        file.write(bytes, len);
+        file.close();
+    }
 }
 
 void StoreStringLine(std::string s)
 {
+    if (!IsSdCardReady) return;
+
     File file = SD.open("/FlightData.fdat", O_APPEND);
-
-    file.write(s.c_str());
-
-    file.close();
+    if (file)
+    {
+        file.write(s.c_str());
+        file.close();
+    }
 }
 
 void TransferFileData(File to)

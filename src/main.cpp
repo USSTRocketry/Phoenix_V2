@@ -1,92 +1,325 @@
 #include <Arduino.h>
 
+#include "RocketGroundCommunication.pb.h"
 #include "Watchdog_t4.h"
 #include "Global.h"
 #include "StateMachine.h"
 #include "SensorAggregator.h"
 #include "Filter/LowPass.h"
 #include "Log/DataStorage.h"
+#include "Log.h"
+#include "WorkQueue.h"
+#include "ProtoCodec.h"
+#include <memory>
+#include <string>
+#include "Type.h"
+
+namespace hal    = ra::hal;
+namespace global = ra::global;
+
+namespace
+{
+HAL::RFM95Radio Radio(HAL::RADIO_CS, HAL::RADIO_INT, HAL::RADIO_SPI, 433.0);
+
+constexpr auto SystemTickId          = 1;
+constexpr auto LowPassFactor         = 0.6f;
+constexpr auto CalibrationIterations = 50;
+constexpr auto TickFrequencyMs       = 200;
 
 StateMachine SM;
-Filter::LowPass LowPassFilter {0.6};
-ra::SensorAggregator<SensorData> SensorAccumulator {
-    &ra::global::Magnetometer, &ra::global::Barometer, &ra::global::AccelGyro};
+Filter::LowPass LowPassFilter {LowPassFactor};
+ra::SensorAggregator<SensorData> SensorAccumulator {&global::Magnetometer, &global::Barometer, &global::AccelGyro};
+hal::Tick SystemTick {SystemTickId};
+hal::Tick::TickPoint MainTick {hal::Tick::Invalid()};
+hal::WorkQueue::WorkHandle FlightControlHandle {};
 
-static constexpr auto SystemTickId = 1;
-ra::hal::Tick SystemTick {SystemTickId};
-static ra::hal::Tick::TickPoint MainTick {ra::hal::Tick::Invalid()};
-ra::hal::Tick::TickPoint ra::global::GetSysTick() { return MainTick; }
+ra::Logger::LogInfo DefaultLogInfo {
+    .Timestamp = MainTick.Raw(),
+    .Level     = ra::Logger::Severity::Error,
+    .Category  = ra::type::Category::Platform,
+};
 
-static void Run();
+void LogApp(uint32_t Status,
+            const std::string& Msg,
+            ra::Logger::Severity Level = ra::Logger::Severity::Info,
+            ra::type::Category Category = ra::type::Category::Application)
+{
+    auto Info = DefaultLogInfo;
+    Info.Timestamp = SystemTick.Now().Raw();
+    Info.Level     = Level;
+    Info.Category  = Category;
+    ra::global::Logger.Log(Info, Status, Msg);
+}
+
+void FlightProcess(hal::WorkQueue::WorkHandle&);
+
+uint32_t WriteBytes(std::span<const std::byte> Data, void*)
+{
+    StoreBytes(const_cast<char*>(reinterpret_cast<const char*>(Data.data())), Data.size_bytes());
+
+    std::span<const std::byte> remaining = Data;
+    while (!remaining.empty())
+    {
+        auto FrameOpt = ra::turtleford::ProtoFrame_Read(remaining);
+        if (!FrameOpt.has_value())
+        {
+            Serial.println("log message frame decode failed");
+            break;
+        }
+
+        const auto& Frame = FrameOpt.value();
+        const auto LogMsgOpt = ra::turtleford::ProtoDecode_LogMessage(Frame.Payload, ra::turtleford::ProtoFlags::None);
+        if (!LogMsgOpt.has_value())
+        {
+            Serial.println("log message payload decode failed");
+            remaining = remaining.subspan(Frame.BytesConsumed);
+            continue;
+        }
+
+        const Proto_LogMessage& DecodedMsg = LogMsgOpt.value();
+
+        Serial.printf("Timestamp : %f\n", static_cast<double>(DecodedMsg.main_message.timestamp));
+
+        switch (DecodedMsg.main_message.which_message_type)
+        {
+            case Proto_MainMessage_debug_msg_tag:
+            {
+                const auto Msg = std::unique_ptr<std::string>(
+                    static_cast<std::string*>(DecodedMsg.main_message.message_type.debug_msg.msg.arg));
+
+                Serial.println(Msg->c_str());
+                break;
+            }
+            case Proto_MainMessage_in_flight_data_tag:
+            {
+                // Re-serialize as raw Proto_MainMessage (without the LogMessage outer wrapper) and send over RFM95
+                static uint32_t LastRadioSend = 0;
+                uint32_t Now = millis();
+                if (Now - LastRadioSend >= 400) // 400ms throttle to prevent clogging the radio
+                {
+                    LastRadioSend = Now;
+                    static std::array<std::byte, 128> radioBuffer;
+                    size_t written = ra::turtleford::ProtoEncode(
+                        DecodedMsg.main_message.timestamp,
+                        DecodedMsg.main_message,
+                        radioBuffer,
+                        ra::turtleford::ProtoFlags::None
+                    );
+                    if (written > 0)
+                    {
+                        bool sent = Radio.send(std::span<const uint8_t>(reinterpret_cast<const uint8_t*>(radioBuffer.data()), written));
+                        Serial.printf("Radio.send called! Bytes: %d, success: %d\n", (int)written, sent);
+                    }
+                }
+                break;
+            }
+        }
+
+        remaining = remaining.subspan(Frame.BytesConsumed);
+    }
+
+    return Data.size();
+}
+
+void InitializeSensors()
+{
+    SensorAccumulator.Apply([](auto* Sensor) { Sensor->Init(); });
+}
+
+void CalibrateSensors()
+{
+    using namespace global;
+
+    auto ReadingMiss {0};
+
+    // we do a blocking init
+    for (auto i = 0; i < CalibrationIterations; i++)
+    {
+        // Ensure the tick advances each iteration so ticked sensors will collect fresh data.
+        MainTick = SystemTick.Advance();
+
+        auto [Result, Data] = SensorAccumulator.Collect();
+        if (!Result)
+        {
+            ReadingMiss++;
+            continue;
+        }
+
+        LowPassFilter.Filter(Data);
+        delay(TickFrequencyMs);
+    }
+
+    if (ReadingMiss > (CalibrationIterations / 2))
+    {
+        LogApp(1, "Calibration failed", ra::Logger::Severity::Error, ra::type::Category::Sensors);
+    }
+
+    calibration::SensorData = LowPassFilter.History();
+
+    const float AccelMag      = calibration::SensorData.AccelGyro.Accel.norm();
+    calibration::GroundNormal = {calibration::SensorData.AccelGyro.Accel / AccelMag, AccelMag};
+}
+
+void StartFlightControl()
+{
+    Serial.println("Initializing MainQueue...");
+    auto Status = global::MainQueue.Init();
+    Serial.printf("MainQueue Init status: %d\n", static_cast<int>(Status));
+
+    hal::WorkQueue::SubmitOptions FlightControl {
+        .Exec =
+            {
+                   .Fn  = FlightProcess,
+                   .Ctx = nullptr,
+                   },
+
+        .Sched = {.DelayMs = TickFrequencyMs, .Iterations = hal::WorkQueue::Scheduling::IterationInfinite}
+    };
+
+    Serial.println("Submitting FlightProcess to MainQueue...");
+    std::tie(Status, FlightControlHandle) = global::MainQueue.Submit(FlightControl);
+    Serial.printf("MainQueue Submit status: %d\n", static_cast<int>(Status));
+}
 
 void WatchDogInterrupt()
 {
-    StoreStringLine("Watchdog soft interrupt!");
-    if (!ra::global::ParachuteDeployed)
+    LogApp(0, "Watchdog soft interrupt!", ra::Logger::Severity::Warn, ra::type::Category::Platform);
+    if (SM.GetState() < FlightState_InFlight)
     {
-        StoreStringLine("Watchdog enter InFlight");
+        LogApp(0, "Watchdog enter InFlight", ra::Logger::Severity::Info, ra::type::Category::FlightControl);
         // wait for parachute deployment
         SM.EnterState<InFlight>(LowPassFilter.History().BMP280.Altitude);
     }
 }
 
-void setup()
+static ra::type::FlightData SensorDataToFlightData(const SensorData& SensorData)
 {
-    using namespace ra::global;
-
-    auto abc = 3ull;
-
-    char c = abc;
-
-    Serial.begin(115200);
-    InitDataStorage();
-
-    // initialize all sensors
-    SensorAccumulator.Apply([](auto* Sensor) { Sensor->Init(); });
-
-    // calibrate and obtain initial readings
-    // make sure the GroundNormal is always pointing up
-    {
-        auto ReadingMiss {0};
-        constexpr int CalibrateIteration = 50;
-
-        for (auto i = 0; i < CalibrateIteration; i++)
-        {
-            auto [Result, Data] = SensorAccumulator.Collect();
-            if (!Result)
-            {
-                ReadingMiss++;
-                continue;
-            }
-
-            LowPassFilter.Filter(Data);
-        }
-        if (ReadingMiss > CalibrateIteration / 2)
-        {
-            StoreStringLine("Calibration failed");
-            assert(false);
-        }
-
-        calibration::SensorData   = LowPassFilter.History();
-        const float AccelMag      = calibration::SensorData.AccelGyro.Accel.norm();
-        calibration::GroundNormal = {calibration::SensorData.AccelGyro.Accel / AccelMag, AccelMag};
-    }
-    StoreStringLine("FC Start");
-
-    // soft reset(sec), hard reset(sec), pin, fn_ptr for soft reset
-    ra::global::WatchDog.begin({.trigger = 10.0, .timeout = 20.0, .pin = 13, .callback = WatchDogInterrupt});
+    return ra::type::FlightData{
+        .BMP_Data             = {.Temperature = SensorData.BMP280.Temperature,
+                                 .Pressure    = SensorData.BMP280.Pressure,
+                                 .Altitude    = SensorData.BMP280.Altitude},
+        .AccelGyroTemperature = SensorData.AccelGyro.Temperature,
+        .Accel                = {.X = SensorData.AccelGyro.Accel.x(),
+                                 .Y = SensorData.AccelGyro.Accel.y(),
+                                 .Z = SensorData.AccelGyro.Accel.z()},
+        .Gyro                 = {.X = SensorData.AccelGyro.Gyro.x(),
+                                 .Y = SensorData.AccelGyro.Gyro.y(),
+                                 .Z = SensorData.AccelGyro.Gyro.z()},
+        .Magnetometer         = {.X = SensorData.Magnetic.x(),
+                                 .Y = SensorData.Magnetic.y(),
+                                 .Z = SensorData.Magnetic.z()},
+        .Thermometer          = SensorData.BMP280.Temperature,
+    };
 }
 
-void loop() { Run(); }
-
-void Run()
+void FlightProcess(hal::WorkQueue::WorkHandle&)
 {
-    SystemTick.Advance();
-    ra::global::WatchDog.feed();
-
+    Serial.println("--- FlightProcess Tick Start ---");
+    MainTick            = SystemTick.Advance();
+    Serial.println("Tick advanced");
     auto [Result, Data] = SensorAccumulator.Collect();
-    if (!Result) { StoreStringLine("data collection failed"); }
+    Serial.printf("Sensors collected, Result: %d\n", Result);
+    if (!Result)
+    {
+        Serial.println("Warning: Sensor collection failed!");
+        LogApp(1, "data collection failed", ra::Logger::Severity::Warn);
+    }
 
+    Serial.println("Filtering data...");
     auto Filtered = LowPassFilter.Filter(Data);
-    StoreData(SM.Run(Filtered), Filtered);
+    Serial.println("Data filtered");
+
+    const StateContext Ctx {.Sensors = Filtered, .FlightControlHandle = FlightControlHandle};
+    Serial.println("Running StateMachine...");
+    SM.Run(Ctx);
+    Serial.println("StateMachine run complete");
+
+    const ra::type::FlightData Fd = SensorDataToFlightData(Filtered);
+    ra::Logger::LogInfo dataInfo = DefaultLogInfo;
+    dataInfo.Timestamp = MainTick.Raw();
+    dataInfo.Level     = ra::Logger::Severity::Verbose;
+    dataInfo.Category  = ra::type::Category::Sensors;
+    Serial.println("Logging flight data...");
+    ra::global::Logger.Log(dataInfo, Fd);
+    Serial.println("Flight data logged");
+
+    // Force flush the cached buffer to output the logged data immediately
+    Serial.println("Flushing logger...");
+    ra::global::Logger.Flush();
+    Serial.println("Logger flushed");
+    Serial.println("--- FlightProcess Tick End ---");
+}
+} // namespace
+
+hal::Tick::TickPoint global::GetSysTick() { return SystemTick.Now(); }
+
+void setup()
+{
+    Serial.begin(115200);
+    while (!Serial && millis() < 4000)
+    {
+        // Wait up to 4 seconds for USB Serial Monitor to connect
+    }
+    Serial.println("--- Flight Computer Booting ---");
+    if (CrashReport)
+    {
+        Serial.print(CrashReport);
+    }
+
+    Serial.println("Initializing Data Storage...");
+    InitDataStorage();
+    Serial.println();
+
+    Serial.println("Registering Logger Callback...");
+    global::Logger.RegisterCallback(WriteBytes, nullptr);
+
+    Serial.println("Initializing RFM95 Radio...");
+    // Initialize radio EN and reset
+    pinMode(HAL::RADIO_EN, OUTPUT);
+    digitalWrite(HAL::RADIO_EN, HIGH);
+    Radio.reset(HAL::RADIO_RST);
+    if (!Radio.begin())
+    {
+        Serial.println("RFM95 Radio init failed!");
+        LogApp(1, "RFM95 Radio init failed", ra::Logger::Severity::Error);
+    }
+    else
+    {
+        Serial.println("RFM95 Radio init OK.");
+        LogApp(0, "RFM95 Radio init OK", ra::Logger::Severity::Info);
+    }
+
+    Serial.println("Initializing Sensors...");
+    InitializeSensors();
+
+    Serial.println("Calibrating Sensors (takes 10s)...");
+    CalibrateSensors();
+    Serial.println("Calibration complete.");
+
+    // soft reset(sec), hard reset(sec), pin, fn_ptr for soft reset
+    Serial.println("Starting Watchdog...");
+    global::WatchDog.begin({.trigger = 10.0, .timeout = 20.0, .pin = 13, .callback = WatchDogInterrupt});
+
+    Serial.println("Starting Flight Control Queue...");
+    StartFlightControl();
+
+    LogApp(0, "FC Start", ra::Logger::Severity::Info);
+    Serial.println("--- Setup Complete, Entering Loop ---");
+}
+
+void loop()
+{
+    global::WatchDog.feed();
+
+    static uint32_t LastLoopPrint = 0;
+    uint32_t Now = millis();
+    if (Now - LastLoopPrint >= 1000)
+    {
+        LastLoopPrint = Now;
+        Serial.println("Loop tick!");
+    }
+
+#if !(WORK_QUEUE_PREEMPTIVE)
+    global::MainQueue.Run();
+#endif
 }
