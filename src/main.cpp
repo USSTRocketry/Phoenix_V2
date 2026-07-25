@@ -33,6 +33,9 @@ hal::Tick SystemTick {SystemTickId};
 hal::Tick::TickPoint MainTick {hal::Tick::Invalid()};
 hal::WorkQueue::WorkHandle FlightControlHandle {};
 
+bool g_camera_power = false;
+bool g_camera_recording = false;
+
 ra::Logger::LogInfo DefaultLogInfo {
     .Timestamp = MainTick.Raw(),
     .Level     = ra::Logger::Severity::Error,
@@ -78,7 +81,7 @@ uint32_t WriteBytes(std::span<const std::byte> Data, void*)
 
         const Proto_LogMessage& DecodedMsg = LogMsgOpt.value();
 
-        Serial.printf("Timestamp : %f\n", static_cast<double>(DecodedMsg.main_message.timestamp));
+        // Serial.printf("Timestamp : %f\n", static_cast<double>(DecodedMsg.main_message.timestamp));
 
         switch (DecodedMsg.main_message.which_message_type)
         {
@@ -87,7 +90,7 @@ uint32_t WriteBytes(std::span<const std::byte> Data, void*)
                 const auto Msg = std::unique_ptr<std::string>(
                     static_cast<std::string*>(DecodedMsg.main_message.message_type.debug_msg.msg.arg));
 
-                Serial.println(Msg->c_str());
+                // Serial.println(Msg->c_str());
                 break;
             }
             case Proto_MainMessage_in_flight_data_tag:
@@ -108,7 +111,8 @@ uint32_t WriteBytes(std::span<const std::byte> Data, void*)
                     if (written > 0)
                     {
                         bool sent = Radio.send(std::span<const uint8_t>(reinterpret_cast<const uint8_t*>(radioBuffer.data()), written));
-                        Serial.printf("Radio.send called! Bytes: %d, success: %d\n", (int)written, sent);
+                        // Serial.printf("Radio.send called! Bytes: %d, success: %d\n", (int)written, sent);
+                        (void)sent;
                     }
                 }
                 break;
@@ -162,9 +166,9 @@ void CalibrateSensors()
 
 void StartFlightControl()
 {
-    Serial.println("Initializing MainQueue...");
+    // Serial.println("Initializing MainQueue...");
     auto Status = global::MainQueue.Init();
-    Serial.printf("MainQueue Init status: %d\n", static_cast<int>(Status));
+    // Serial.printf("MainQueue Init status: %d\n", static_cast<int>(Status));
 
     hal::WorkQueue::SubmitOptions FlightControl {
         .Exec =
@@ -176,9 +180,9 @@ void StartFlightControl()
         .Sched = {.DelayMs = TickFrequencyMs, .Iterations = hal::WorkQueue::Scheduling::IterationInfinite}
     };
 
-    Serial.println("Submitting FlightProcess to MainQueue...");
+    // Serial.println("Submitting FlightProcess to MainQueue...");
     std::tie(Status, FlightControlHandle) = global::MainQueue.Submit(FlightControl);
-    Serial.printf("MainQueue Submit status: %d\n", static_cast<int>(Status));
+    // Serial.printf("MainQueue Submit status: %d\n", static_cast<int>(Status));
 }
 
 void WatchDogInterrupt()
@@ -214,40 +218,105 @@ static ra::type::FlightData SensorDataToFlightData(const SensorData& SensorData)
 
 void FlightProcess(hal::WorkQueue::WorkHandle&)
 {
-    Serial.println("--- FlightProcess Tick Start ---");
+    // Serial.println("--- FlightProcess Tick Start ---");
     MainTick            = SystemTick.Advance();
-    Serial.println("Tick advanced");
+    // Serial.println("Tick advanced");
     auto [Result, Data] = SensorAccumulator.Collect();
-    Serial.printf("Sensors collected, Result: %d\n", Result);
+    // Serial.printf("Sensors collected, Result: %d\n", Result);
     if (!Result)
     {
-        Serial.println("Warning: Sensor collection failed!");
+        // Serial.println("Warning: Sensor collection failed!");
         LogApp(1, "data collection failed", ra::Logger::Severity::Warn);
     }
 
-    Serial.println("Filtering data...");
+    // Serial.println("Filtering data...");
     auto Filtered = LowPassFilter.Filter(Data);
-    Serial.println("Data filtered");
+    // Serial.println("Data filtered");
 
     const StateContext Ctx {.Sensors = Filtered, .FlightControlHandle = FlightControlHandle};
-    Serial.println("Running StateMachine...");
+    // Serial.println("Running StateMachine...");
     SM.Run(Ctx);
-    Serial.println("StateMachine run complete");
+    // Serial.println("StateMachine run complete");
 
     const ra::type::FlightData Fd = SensorDataToFlightData(Filtered);
     ra::Logger::LogInfo dataInfo = DefaultLogInfo;
     dataInfo.Timestamp = MainTick.Raw();
     dataInfo.Level     = ra::Logger::Severity::Verbose;
     dataInfo.Category  = ra::type::Category::Sensors;
-    Serial.println("Logging flight data...");
+    // Serial.println("Logging flight data...");
     ra::global::Logger.Log(dataInfo, Fd);
-    Serial.println("Flight data logged");
+    // Serial.println("Flight data logged");
 
     // Force flush the cached buffer to output the logged data immediately
-    Serial.println("Flushing logger...");
+    // Serial.println("Flushing logger...");
     ra::global::Logger.Flush();
-    Serial.println("Logger flushed");
-    Serial.println("--- FlightProcess Tick End ---");
+    // Serial.println("Logger flushed");
+    // Serial.println("--- FlightProcess Tick End ---");
+}
+
+void HandleCommand(uint32_t cmd)
+{
+    switch (cmd)
+    {
+        case static_cast<uint32_t>(ra::type::CommandType::Abort):
+            // Serial.println("[COMMAND RECEIVED] ABORT: Command received, no action taken.");
+            LogApp(0, "Command: Abort received (no-op)", ra::Logger::Severity::Info);
+            break;
+        case static_cast<uint32_t>(ra::type::CommandType::CameraOn):
+            g_camera_power = true;
+            // Serial.println("[COMMAND RECEIVED] CAMERA ON: Power enabled.");
+            LogApp(0, "Command: Camera ON", ra::Logger::Severity::Info);
+            break;
+        case static_cast<uint32_t>(ra::type::CommandType::CameraOff):
+            g_camera_power = false;
+            g_camera_recording = false;
+            // Serial.println("[COMMAND RECEIVED] CAMERA OFF: Power disabled.");
+            LogApp(0, "Command: Camera OFF", ra::Logger::Severity::Info);
+            break;
+        case static_cast<uint32_t>(ra::type::CommandType::StartRecording):
+            if (g_camera_power) {
+                g_camera_recording = true;
+                // Serial.println("[COMMAND RECEIVED] START RECORDING: Video recording started.");
+                LogApp(0, "Command: Start Recording", ra::Logger::Severity::Info);
+            } else {
+                // Serial.println("[COMMAND WARNING] START RECORDING: Camera is OFF. Power on camera first!");
+                LogApp(1, "Command: Start Recording failed (Camera OFF)", ra::Logger::Severity::Warn);
+            }
+            break;
+        case static_cast<uint32_t>(ra::type::CommandType::StopRecording):
+            g_camera_recording = false;
+            // Serial.println("[COMMAND RECEIVED] STOP RECORDING: Video recording stopped.");
+            LogApp(0, "Command: Stop Recording", ra::Logger::Severity::Info);
+            break;
+        default:
+            // Serial.printf("[COMMAND ERROR] Unknown command ID: %u\n", cmd);
+            LogApp(1, "Unknown command received", ra::Logger::Severity::Warn);
+            break;
+    }
+}
+
+void ProcessIncomingRadioCommands()
+{
+    if (Radio.available())
+    {
+        static std::array<std::byte, 128> rxBuf;
+        uint8_t len = static_cast<uint8_t>(rxBuf.size());
+        if (Radio.recv(reinterpret_cast<uint8_t*>(rxBuf.data()), &len))
+        {
+            // Serial.printf("Radio frame received! Size: %d bytes\n", (int)len);
+            std::span<const std::byte> dataSpan(rxBuf.data(), len);
+            auto mainMsgOpt = ra::turtleford::ProtoDecode_MainMessage(dataSpan);
+            if (mainMsgOpt.has_value())
+            {
+                const auto& msg = mainMsgOpt.value();
+                if (msg.which_message_type == Proto_MainMessage_command_msg_tag)
+                {
+                    uint32_t cmd = msg.message_type.command_msg.command;
+                    HandleCommand(cmd);
+                }
+            }
+        }
+    }
 }
 } // namespace
 
@@ -311,13 +380,15 @@ void loop()
 {
     global::WatchDog.feed();
 
-    static uint32_t LastLoopPrint = 0;
-    uint32_t Now = millis();
-    if (Now - LastLoopPrint >= 1000)
-    {
-        LastLoopPrint = Now;
-        Serial.println("Loop tick!");
-    }
+    ProcessIncomingRadioCommands();
+
+    // static uint32_t LastLoopPrint = 0;
+    // uint32_t Now = millis();
+    // if (Now - LastLoopPrint >= 1000)
+    // {
+    //     LastLoopPrint = Now;
+    //     Serial.println("Loop tick!");
+    // }
 
 #if !(WORK_QUEUE_PREEMPTIVE)
     global::MainQueue.Run();
