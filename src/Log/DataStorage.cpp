@@ -55,7 +55,7 @@ void InitSdCard()
 void InitDataStorage()
 {
     InitSdCard();
-    Serial.printf("InitDataStorage()\n");
+    // Serial.printf("InitDataStorage()\n");
 }
 
 void StoreBytes(char bytes[], int len)
