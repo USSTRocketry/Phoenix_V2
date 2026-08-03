@@ -297,23 +297,20 @@ void HandleCommand(uint32_t cmd)
 
 void ProcessIncomingRadioCommands()
 {
-    if (Radio.available())
+    static std::array<std::byte, 128> rxBuf;
+    size_t len = 0;
+    if (Radio.receive(std::span<uint8_t>(reinterpret_cast<uint8_t*>(rxBuf.data()), rxBuf.size()), len))
     {
-        static std::array<std::byte, 128> rxBuf;
-        uint8_t len = static_cast<uint8_t>(rxBuf.size());
-        if (Radio.recv(reinterpret_cast<uint8_t*>(rxBuf.data()), &len))
+        // Serial.printf("Radio frame received! Size: %d bytes\n", (int)len);
+        std::span<const std::byte> dataSpan(rxBuf.data(), len);
+        auto mainMsgOpt = ra::turtleford::ProtoDecode_MainMessage(dataSpan);
+        if (mainMsgOpt.has_value())
         {
-            // Serial.printf("Radio frame received! Size: %d bytes\n", (int)len);
-            std::span<const std::byte> dataSpan(rxBuf.data(), len);
-            auto mainMsgOpt = ra::turtleford::ProtoDecode_MainMessage(dataSpan);
-            if (mainMsgOpt.has_value())
+            const auto& msg = mainMsgOpt.value();
+            if (msg.which_message_type == Proto_MainMessage_command_msg_tag)
             {
-                const auto& msg = mainMsgOpt.value();
-                if (msg.which_message_type == Proto_MainMessage_command_msg_tag)
-                {
-                    uint32_t cmd = msg.message_type.command_msg.command;
-                    HandleCommand(cmd);
-                }
+                uint32_t cmd = msg.message_type.command_msg.command;
+                HandleCommand(cmd);
             }
         }
     }
