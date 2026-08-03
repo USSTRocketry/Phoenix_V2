@@ -17,4 +17,7 @@ public:
 public:
     GroundIdle();
     ~GroundIdle() override = default;
+
+private:
+    uint8_t m_DebounceCount = 0;
 };

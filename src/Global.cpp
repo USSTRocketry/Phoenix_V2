@@ -1,14 +1,20 @@
 #include "Global.h"
 #include <PINS.h>
+#include <addresses.h>
 
 namespace ra::global
 {
 WDT_T4<WDT2> WatchDog;
 
-// ==== Sensors ====
-LIS3MDL Magnetometer(GetSysTick, 0x1E, HAL::I2C_WIRE);
-BMP280 Barometer {GetSysTick, 0x77, HAL::I2C_WIRE};
-LSM6 AccelGyro(GetSysTick, 0x6B, HAL::I2C_WIRE);
+// ==== Wrapped Sensors (internally construct HAL drivers) ====
+LIS3MDL Magnetometer(GetSysTick, I2C_ADDRESS_LIS3MDL, HAL::I2C_WIRE);
+BMP280 Barometer {GetSysTick, I2C_ADDRESS_BMP280, HAL::I2C_WIRE};
+LSM6 AccelGyro(GetSysTick, I2C_ADDRESS_LSM6DS, HAL::I2C_WIRE);
+
+// ==== Standalone HAL Sensors ====
+HAL::GpsSensor GpsSensor(HAL::GPS_HW_SERIAL);
+HAL::Bmp581Sensor Bmp581(I2C_ADDRESS_BMP581, HAL::I2C_WIRE);
+HAL::TemperatureSensor TempSensor(I2C_ADDRESS_MCP9808, HAL::I2C_WIRE);
 
 ra::Logger& Logger = ra::Logger::Instance();
 hal::WorkQueue MainQueue;

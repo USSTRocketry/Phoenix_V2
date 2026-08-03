@@ -12,6 +12,7 @@
 #include "ProtoCodec.h"
 #include <memory>
 #include <string>
+#include <Wire.h>
 #include "Type.h"
 
 namespace hal    = ra::hal;
@@ -36,10 +37,10 @@ hal::WorkQueue::WorkHandle FlightControlHandle {};
 bool g_camera_power = false;
 bool g_camera_recording = false;
 
-ra::Logger::LogInfo DefaultLogInfo {
-    .Timestamp = MainTick.Raw(),
-    .Level     = ra::Logger::Severity::Error,
-    .Category  = ra::type::Category::Platform,
+ra::Logger::LogInfo DefaultLogInfo{
+    .Timestamp = ra::hal::SysUptimeMs(),
+    .Level     = ra::Logger::Severity::Info,
+    .Category  = ra::type::Category::Sensors,
 };
 
 void LogApp(uint32_t Status,
@@ -128,6 +129,9 @@ uint32_t WriteBytes(std::span<const std::byte> Data, void*)
 void InitializeSensors()
 {
     SensorAccumulator.Apply([](auto* Sensor) { Sensor->Init(); });
+    global::GpsSensor.begin();
+    global::Bmp581.begin();
+    global::TempSensor.begin();
 }
 
 void CalibrateSensors()
@@ -160,8 +164,15 @@ void CalibrateSensors()
 
     calibration::SensorData = LowPassFilter.History();
 
-    const float AccelMag      = calibration::SensorData.AccelGyro.Accel.norm();
-    calibration::GroundNormal = {calibration::SensorData.AccelGyro.Accel / AccelMag, AccelMag};
+    const float AccelMag = calibration::SensorData.AccelGyro.Accel.norm();
+    if (AccelMag > 1.0f)
+    {
+        calibration::GroundNormal = {calibration::SensorData.AccelGyro.Accel / AccelMag, AccelMag};
+    }
+    else
+    {
+        calibration::GroundNormal = {Eigen::Vector3f(0.f, 0.f, 1.f), 9.81f};
+    }
 }
 
 void StartFlightControl()
@@ -240,7 +251,7 @@ void FlightProcess(hal::WorkQueue::WorkHandle&)
 
     const ra::type::FlightData Fd = SensorDataToFlightData(Filtered);
     ra::Logger::LogInfo dataInfo = DefaultLogInfo;
-    dataInfo.Timestamp = MainTick.Raw();
+    dataInfo.Timestamp = ra::hal::SysUptimeMs();
     dataInfo.Level     = ra::Logger::Severity::Verbose;
     dataInfo.Category  = ra::type::Category::Sensors;
     // Serial.println("Logging flight data...");
@@ -331,6 +342,12 @@ void setup()
     {
         Serial.print(CrashReport);
     }
+
+    pinMode(HAL::GPIO_3V3_EN, OUTPUT);
+    digitalWrite(HAL::GPIO_3V3_EN, LOW);  // Active LOW according to pms.h
+    delay(100); // Allow sensor power rail to stabilize
+
+    Wire.begin();
 
     Serial.println("Initializing Data Storage...");
     InitDataStorage();

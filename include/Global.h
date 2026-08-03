@@ -21,6 +21,9 @@ extern WDT_T4<WDT2> WatchDog;
 extern LIS3MDL Magnetometer;
 extern BMP280 Barometer;
 extern LSM6 AccelGyro;
+extern HAL::GpsSensor GpsSensor;
+extern HAL::Bmp581Sensor Bmp581;
+extern HAL::TemperatureSensor TempSensor;
 
 // Ticks
 hal::Tick::TickPoint GetSysTick();
