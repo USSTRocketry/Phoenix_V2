@@ -321,6 +321,14 @@ void HandleCommand(uint32_t cmd)
             // Serial.println("[COMMAND RECEIVED] STOP RECORDING: Video recording stopped.");
             LogApp(0, "Command: Stop Recording", ra::Logger::Severity::Info);
             break;
+        case static_cast<uint32_t>(ra::type::CommandType::SdLogOn):
+            SetSdLoggingEnabled(true);
+            LogApp(0, "Command: SD Logging ON", ra::Logger::Severity::Info);
+            break;
+        case static_cast<uint32_t>(ra::type::CommandType::SdLogOff):
+            SetSdLoggingEnabled(false);
+            LogApp(0, "Command: SD Logging OFF", ra::Logger::Severity::Info);
+            break;
         default:
             // Serial.printf("[COMMAND ERROR] Unknown command ID: %u\n", cmd);
             LogApp(1, "Unknown command received", ra::Logger::Severity::Warn);

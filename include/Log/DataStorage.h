@@ -6,6 +6,9 @@
 
 void InitDataStorage();
 
+void SetSdLoggingEnabled(bool enabled);
+bool IsSdLoggingEnabled();
+
 void StoreBytes(char bytes[], int len);
 void StoreStringLine(std::string s);
 std::string ConvertDataToCSVRow(FlightState, const SensorData&);

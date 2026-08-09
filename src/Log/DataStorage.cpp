@@ -29,9 +29,20 @@ const int FlashChipSelect = 6; // digital pin for flash chip CS pin
 // const int FlashChipSelect = 21; // Arduino 101 built-in SPI Flash
 
 bool IsSdCardReady = false;
+static bool g_sd_logging_enabled = true;
 static char g_log_filename[32] = "/Flight_001.bin";
 
 static File g_log_file;
+
+void SetSdLoggingEnabled(bool enabled)
+{
+    g_sd_logging_enabled = enabled;
+}
+
+bool IsSdLoggingEnabled()
+{
+    return g_sd_logging_enabled;
+}
 
 void InitSdCard()
 {
@@ -77,7 +88,7 @@ void InitDataStorage()
 
 void StoreBytes(char bytes[], int len)
 {
-    if (!IsSdCardReady || !g_log_file) return;
+    if (!g_sd_logging_enabled || !IsSdCardReady || !g_log_file) return;
 
     g_log_file.write(reinterpret_cast<const uint8_t*>(bytes), len);
     g_log_file.flush();
