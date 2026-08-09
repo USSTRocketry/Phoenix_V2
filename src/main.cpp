@@ -207,8 +207,22 @@ void WatchDogInterrupt()
     }
 }
 
-static ra::type::FlightData SensorDataToFlightData(const SensorData& SensorData)
+static ra::type::FlightState ToFlightState(FlightState State)
 {
+    switch (State)
+    {
+        case FlightState_Unarmed: return ra::type::FlightState::Unarmed;
+        case FlightState_GroundIdle: return ra::type::FlightState::GroundIdle;
+        case FlightState_InFlight: return ra::type::FlightState::InFlight;
+        case FlightState_MainChute: return ra::type::FlightState::MainChute;
+        default: return ra::type::FlightState::Unknown;
+    }
+}
+
+static ra::type::FlightData SensorDataToFlightData(const SensorData& SensorData, FlightState State)
+{
+    const auto GpsData = global::GpsSensor.read();
+
     return ra::type::FlightData{
         .BMP_Data             = {.Temperature = SensorData.BMP280.Temperature,
                                  .Pressure    = SensorData.BMP280.Pressure,
@@ -224,6 +238,14 @@ static ra::type::FlightData SensorDataToFlightData(const SensorData& SensorData)
                                  .Y = SensorData.Magnetic.y(),
                                  .Z = SensorData.Magnetic.z()},
         .Thermometer          = SensorData.BMP280.Temperature,
+        .State                = ToFlightState(State),
+        .GPS_Data             = {.Latitude   = GpsData.latitude,
+                                 .Longitude  = GpsData.longitude,
+                                 .Altitude   = GpsData.altitude,
+                                 .Speed      = GpsData.speed,
+                                 .Angle      = GpsData.angle,
+                                 .FixQuality = static_cast<uint32_t>(GpsData.fix_quality),
+                                 .Satellites  = static_cast<uint32_t>(GpsData.satellites)},
     };
 }
 
@@ -249,7 +271,7 @@ void FlightProcess(hal::WorkQueue::WorkHandle&)
     SM.Run(Ctx);
     // Serial.println("StateMachine run complete");
 
-    const ra::type::FlightData Fd = SensorDataToFlightData(Filtered);
+    const ra::type::FlightData Fd = SensorDataToFlightData(Filtered, SM.GetState());
     ra::Logger::LogInfo dataInfo = DefaultLogInfo;
     dataInfo.Timestamp = ra::hal::SysUptimeMs();
     dataInfo.Level     = ra::Logger::Severity::Verbose;
@@ -393,6 +415,8 @@ void setup()
 void loop()
 {
     global::WatchDog.feed();
+
+    global::GpsSensor.update();
 
     ProcessIncomingRadioCommands();
 

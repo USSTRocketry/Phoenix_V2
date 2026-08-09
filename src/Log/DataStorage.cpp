@@ -20,11 +20,18 @@
 #include "SensorData.h"
 #include "Avionics_HAL.h"
 
-const int SDchipSelect    = 4; // Audio Shield has SD card CS on pin 10
+#if defined(BUILTIN_SDCARD)
+const int SDchipSelect = BUILTIN_SDCARD; // Teensy 4.1 onboard SDIO slot
+#else
+const int SDchipSelect = 4;
+#endif
 const int FlashChipSelect = 6; // digital pin for flash chip CS pin
 // const int FlashChipSelect = 21; // Arduino 101 built-in SPI Flash
 
 bool IsSdCardReady = false;
+static char g_log_filename[32] = "/Flight_001.bin";
+
+static File g_log_file;
 
 void InitSdCard()
 {
@@ -39,14 +46,24 @@ void InitSdCard()
 
     if (IsSdCardReady)
     {
-        // Create/open the binary log file on the SD card.
-        // Use the correct flags (bitwise OR) so the file is created if missing.
-        if (SD.exists("/FlightData.bin")) { SD.remove("/FlightData.bin"); }
-        File F = SD.open("/FlightData.bin", O_CREAT | O_WRITE);
-        if (F) { F.close(); }
+        // Find next available filename to prevent overwrites across reboots
+        for (int i = 1; i <= 999; ++i)
+        {
+            snprintf(g_log_filename, sizeof(g_log_filename), "/Flight_%03d.bin", i);
+            if (!SD.exists(g_log_filename))
+            {
+                break;
+            }
+        }
+
+        g_log_file = SD.open(g_log_filename, FILE_WRITE);
+        if (g_log_file)
+        {
+            Serial.printf("Logging binary telemetry to SD file: %s\n", g_log_filename);
+        }
         else
         {
-            Serial.println("Failed to create/open FlightData.bin on SD card");
+            Serial.printf("Failed to create/open %s on SD card\n", g_log_filename);
             IsSdCardReady = false;
         }
     }
@@ -60,26 +77,14 @@ void InitDataStorage()
 
 void StoreBytes(char bytes[], int len)
 {
-    if (!IsSdCardReady) return;
+    if (!IsSdCardReady || !g_log_file) return;
 
-    File file = SD.open("/FlightData.bin", O_APPEND);
-    if (file)
-    {
-        file.write(bytes, len);
-        file.close();
-    }
+    g_log_file.write(reinterpret_cast<const uint8_t*>(bytes), len);
+    g_log_file.flush();
 }
 
 void StoreStringLine(std::string s)
 {
-    if (!IsSdCardReady) return;
-
-    File file = SD.open("/FlightData.fdat", O_APPEND);
-    if (file)
-    {
-        file.write(s.c_str());
-        file.close();
-    }
 }
 
 void TransferFileData(File to)
