@@ -20,4 +20,8 @@ public:
 
 private:
     uint8_t m_DebounceCount = 0;
+    bool m_MotorBurnDetected = false;
+    float m_PadAltitude = 0.0f;
+    uint8_t m_FlightCheckTicks = 0;
+    bool m_PadAltitudeInitialized = false;
 };
